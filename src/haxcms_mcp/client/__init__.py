@@ -110,8 +110,10 @@ class HaxcmsClient:
             "data": data,
             "files": files,
             "params": params,
-            "timeout": timeout,
         }
+        if timeout is not None:
+            # passing timeout=None to build_request would DISABLE the client-level timeout
+            kwargs["timeout"] = timeout
         response = await self._send(method, path, request_headers, policy, kwargs)
 
         # One reactive refresh on 403 "Invalid bearer token" (API-REF §2.2, PLAN §2.2 step 5).
