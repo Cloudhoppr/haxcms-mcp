@@ -25,8 +25,9 @@ both work.
 ```python
 import mcp_types
 
+
 @mcp.tool(
-    description="Read a thing.",          # optional; docstring is the fallback
+    description="Read a thing.",  # optional; docstring is the fallback
     annotations=mcp_types.ToolAnnotations(
         title="Read thing",
         read_only_hint=True,
@@ -55,6 +56,7 @@ schema is inferred). Tool results therefore come back to the client as
 ```python
 from fastmcp.exceptions import ToolError
 
+
 @mcp.tool
 async def write_thing(name: str) -> str:
     raise ToolError("[INVALID_ARGUMENT] nope. hint here")
@@ -71,10 +73,11 @@ Add a parameter annotated `Context`; fastmcp injects it and keeps it out of the 
 ```python
 from fastmcp import Context
 
+
 @mcp.tool
 async def ctx_tool(x: int, ctx: Context) -> str:
-    await ctx.info("...")            # MCP logging capability (DEPRECATED upstream, SEP-2577)
-    server = ctx.fastmcp             # the FastMCP server instance
+    await ctx.info("...")  # MCP logging capability (DEPRECATED upstream, SEP-2577)
+    server = ctx.fastmcp  # the FastMCP server instance
     return "ok"
 ```
 
@@ -88,19 +91,21 @@ Note: `ctx.info/debug/warn` use the MCP logging capability which mcp SDK v2 mark
 import mcp_types
 from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 
+
 class ReadOnlyGate(Middleware):
     async def on_call_tool(
         self,
         context: MiddlewareContext[mcp_types.CallToolRequestParams],
         call_next: CallNext[mcp_types.CallToolRequestParams, "ToolResult"],
     ):
-        params = context.message                 # CallToolRequestParams: .name, .arguments
-        fctx = context.fastmcp_context           # the Context (may be None in edge cases)
-        tool = await fctx.fastmcp.get_tool(params.name)   # fastmcp Tool object
-        ann = tool.annotations                   # ToolAnnotations | None
+        params = context.message  # CallToolRequestParams: .name, .arguments
+        fctx = context.fastmcp_context  # the Context (may be None in edge cases)
+        tool = await fctx.fastmcp.get_tool(params.name)  # fastmcp Tool object
+        ann = tool.annotations  # ToolAnnotations | None
         if ann is not None and not (ann.read_only_hint or False):
             raise ToolError("[READ_ONLY] ...")
         return await call_next(context)
+
 
 mcp.add_middleware(ReadOnlyGate())
 ```
@@ -122,7 +127,8 @@ the request params). Cache per-tool decisions if this ever gets hot.
 def catalog_resource() -> str:
     return '["p", "h2"]'
 
-@mcp.resource("haxcms://sites/{site}/outline")     # {param} -> function argument
+
+@mcp.resource("haxcms://sites/{site}/outline")  # {param} -> function argument
 def outline_resource(site: str) -> str:
     return f"outline of {site}"
 ```
@@ -165,15 +171,15 @@ explicitly and fastmcp's banners go to stderr, keeping stdout clean for stdio tr
 ```python
 from fastmcp import Client
 
-async with Client(mcp) as client:          # mcp is the FastMCP instance -> memory transport
-    tools = await client.list_tools()      # list[mcp_types.Tool]
+async with Client(mcp) as client:  # mcp is the FastMCP instance -> memory transport
+    tools = await client.list_tools()  # list[mcp_types.Tool]
     result = await client.call_tool("read_thing", {"name": "a", "count": 2})
-    assert result.data == {"name": "a", "count": 2}        # structured content
+    assert result.data == {"name": "a", "count": 2}  # structured content
     assert result.structured_content == {"name": "a", "count": 2}
-    resources = await client.list_resources()              # .uri
-    templates = await client.list_resource_templates()     # .uri_template
+    resources = await client.list_resources()  # .uri
+    templates = await client.list_resource_templates()  # .uri_template
     await client.read_resource("haxcms://catalog/blocks")
-    prompts = await client.list_prompts()                  # .name, .arguments
+    prompts = await client.list_prompts()  # .name, .arguments
     await client.get_prompt("journey", {"site_name": "demo"})
 ```
 
@@ -186,12 +192,12 @@ A tool that raised `ToolError` makes `call_tool` raise `ToolError` client-side (
 Server-side, richer objects:
 
 ```python
-tools = await mcp.list_tools()             # Sequence[fastmcp FunctionTool]
-tool = await mcp.get_tool("read_thing")    # single
+tools = await mcp.list_tools()  # Sequence[fastmcp FunctionTool]
+tool = await mcp.get_tool("read_thing")  # single
 tool.name
 tool.description
-tool.parameters        # JSON schema dict: {"type": "object", "properties": {...}, "required": [...], "additionalProperties": false}
-tool.annotations       # ToolAnnotations | None
+tool.parameters  # JSON schema dict: {"type": "object", "properties": {...}, "required": [...], "additionalProperties": false}
+tool.annotations  # ToolAnnotations | None
 ```
 
 Verified `tool.parameters` output:
