@@ -1,8 +1,8 @@
 """Shared pytest fixtures (PLAN.md Section 6.2).
 
 Phase 0 provides: `haxcms` (session-scoped live instance), `settings` (per test, pointing at the
-runtime with credentials), `mcp` (FastMCP app + in-memory client). The `client`, `site`, and
-`page` fixtures arrive with Phases 1-3 when the code they wrap exists.
+runtime with credentials), `mcp` (FastMCP app + in-memory client). Phase 1 adds `client` (a
+logged-in HaxcmsClient). The `site` and `page` fixtures arrive with Phases 2-3.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from collections.abc import AsyncIterator
 import pytest
 from fastmcp import Client
 
+from haxcms_mcp.client import HaxcmsClient
 from haxcms_mcp.config import Settings
 from haxcms_mcp.server import build_server
 from tests.harness.haxcms_runtime import HaxcmsRuntime
@@ -47,6 +48,14 @@ def settings(haxcms: HaxcmsRuntime) -> Settings:
         username=haxcms.username,
         password=haxcms.password,
     )
+
+
+@pytest.fixture
+async def client(settings: Settings) -> AsyncIterator[HaxcmsClient]:
+    """A HaxcmsClient pointed at the live runtime, logged in (PLAN §6.2)."""
+    async with HaxcmsClient(settings) as haxcms_client:
+        await haxcms_client.auth.ensure_access()
+        yield haxcms_client
 
 
 @pytest.fixture
