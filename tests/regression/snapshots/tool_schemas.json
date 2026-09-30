@@ -7,7 +7,63 @@
       "read_only_hint": true,
       "title": "Server info"
     },
-    "description": "Return identity and configuration of this HAXcms MCP server. Use it to check which HAXcms instance the server talks to and whether Read-Only Mode is active. No HTTP request is made.",
+    "description": "Return identity and configuration of this HAXcms MCP server.\n\nReports which HAXcms instance the server talks to, whether Read-Only Mode is active,\nand — best effort — the instance's own version and status diagnostics (failures appear\nas `version_error` / `status_error` instead of failing the call).",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    }
+  },
+  "login": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Login"
+    },
+    "description": "Log in to the HAXcms instance and start an authenticated session.\n\nReplaces any environment-configured credentials for this process. Call it when other\ntools fail with AUTH_REQUIRED or AUTH_FAILED. Returns the user and the access-token\nlifetime; failures surface as AUTH_FAILED (bad credentials) or RATE_LIMITED (too many\nfailed attempts — wait out the retry-after window).",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "password": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "username",
+        "password"
+      ],
+      "type": "object"
+    }
+  },
+  "logout": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Logout"
+    },
+    "description": "Log out of the HAXcms instance and discard all cached tokens.\n\nAfter logout, authenticated tools fail with AUTH_REQUIRED until login is called again —\neven when environment credentials are configured.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    }
+  },
+  "whoami": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Who am I"
+    },
+    "description": "Validate the current session and report who is logged in.\n\nReturns the user, access-token age in seconds, outbound-budget statistics, the\nRead-Only Mode flag, and the Default Site. With environment credentials configured but\nno session yet, it logs in automatically. Fails with AUTH_REQUIRED after an explicit\nlogout or when no credentials are available.",
     "parameters": {
       "additionalProperties": false,
       "properties": {},

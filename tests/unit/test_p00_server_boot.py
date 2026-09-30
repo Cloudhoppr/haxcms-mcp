@@ -46,17 +46,27 @@ def _add_fake_error_tool(mcp: FastMCP) -> None:
         )
 
 
-async def test_server_lists_exactly_get_server_info() -> None:
+async def test_server_lists_the_session_tools() -> None:
     mcp = build_server(_settings())
     async with Client(mcp) as client:
         tools = await client.list_tools()
-    assert [t.name for t in tools] == ["get_server_info"]
-    ann = tools[0].annotations
+    by_name = {t.name: t for t in tools}
+    # Phase 1 registers the four session tools (PLAN T1.7).
+    assert sorted(by_name) == ["get_server_info", "login", "logout", "whoami"]
+
+    ann = by_name["get_server_info"].annotations
     assert ann is not None
     assert ann.read_only_hint is True
     assert ann.destructive_hint is False
     assert ann.idempotent_hint is True
     assert ann.open_world_hint is False
+
+    # login/logout are writes to session state but not destructive; whoami is read-only
+    for name, read_only in [("login", False), ("logout", False), ("whoami", True)]:
+        tool_ann = by_name[name].annotations
+        assert tool_ann is not None, name
+        assert tool_ann.read_only_hint is read_only, name
+        assert tool_ann.destructive_hint is False, name
 
 
 async def test_get_server_info_payload() -> None:
@@ -70,6 +80,11 @@ async def test_get_server_info_payload() -> None:
     assert data["read_only"] is True
     assert data["transport"] == "stdio"
     assert isinstance(data["version"], str)
+    # no credentials configured: the live probe degrades gracefully into *_error fields
+    haxcms_info = data["haxcms"]
+    assert isinstance(haxcms_info, dict)
+    assert haxcms_info["version_error"].startswith("[AUTH_REQUIRED]")
+    assert haxcms_info["status_error"].startswith("[AUTH_REQUIRED]")
 
 
 async def test_read_only_mode_blocks_write_tool() -> None:
