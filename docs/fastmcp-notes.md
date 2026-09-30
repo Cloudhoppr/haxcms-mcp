@@ -62,9 +62,17 @@ async def write_thing(name: str) -> str:
     raise ToolError("[INVALID_ARGUMENT] nope. hint here")
 ```
 
-Verified: the client's `call_tool` re-raises `ToolError` with the exact message. This is what the
-error middleware uses to translate `HaxcmsMcpError` into `[CODE] message. hint`. Raising
+Verified: the client's `call_tool` re-raises `ToolError` with the exact message. Raising
 `ToolError` from inside middleware `on_call_tool` (before `call_next`) propagates the same way.
+
+**Important (verified)**: any *other* exception raised inside a tool body — e.g. our
+`HaxcmsMcpError` — is caught by `FastMCP.call_tool` **below** the middleware chain and masked
+into `ToolError("Error calling tool '<name>': <original str>")` with the original exception
+attached as `__cause__` (server.py ~L1532-1565; it also logs the traceback via
+`logger.exception`). Middleware never sees the raw exception. Our `ErrorTranslationMiddleware`
+therefore catches the masked `ToolError`, checks `exc.__cause__` for `HaxcmsMcpError`, and
+re-raises a clean `ToolError(cause.formatted)`. Alternative not used: raising `ToolError`
+directly from tool functions.
 
 ## 4. Reading the request context
 

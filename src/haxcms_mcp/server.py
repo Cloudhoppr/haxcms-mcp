@@ -11,11 +11,22 @@ from fastmcp import FastMCP
 
 from haxcms_mcp import __version__
 from haxcms_mcp.config import Settings
+from haxcms_mcp.middleware import (
+    ErrorTranslationMiddleware,
+    ReadOnlyMiddleware,
+    ToolLoggingMiddleware,
+)
 
 
 def build_server(settings: Settings) -> FastMCP:
     """Create and configure the FastMCP application for one Instance."""
     mcp = FastMCP("haxcms-mcp")
+
+    # Order matters: read-only gate outermost, then logging, then error translation
+    # closest to the tool functions.
+    mcp.add_middleware(ReadOnlyMiddleware(settings))
+    mcp.add_middleware(ToolLoggingMiddleware())
+    mcp.add_middleware(ErrorTranslationMiddleware())
 
     @mcp.tool(
         description=(
