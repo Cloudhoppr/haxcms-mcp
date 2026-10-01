@@ -24,12 +24,15 @@ class McpTestClient:
         tools = await self.client.list_tools()
         return [t.name for t in tools]
 
-    async def call(self, name: str, **arguments: Any) -> Any:
-        """Call a tool and return its structured data; fails the test on ToolError."""
+    async def call(self, name: str, /, **arguments: Any) -> Any:
+        """Call a tool and return its structured data; fails the test on ToolError.
+
+        `name` is positional-only so tools may themselves take a `name` argument.
+        """
         result = await self.client.call_tool(name, arguments)
         return result.data
 
-    async def call_error(self, name: str, **arguments: Any) -> str:
+    async def call_error(self, name: str, /, **arguments: Any) -> str:
         """Call a tool expecting a ToolError; return the error message."""
         with pytest.raises(ToolError) as excinfo:
             await self.client.call_tool(name, arguments)
