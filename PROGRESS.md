@@ -15,7 +15,7 @@ Read order at the start of a Session: PLAN.md §0 → CONTEXT.md → this file �
 | 2 | Site lifecycle tools | done | `phase-02` | see tag |
 | 3 | Outline and page tools | done | `phase-03` | see tag |
 | 4 | Content and block tools | done | `phase-04` | see tag |
-| 5 | Files | not started | | |
+| 5 | Files | done | `phase-05` | see tag |
 | 6 | Site settings | not started | | |
 | 7 | Imports and generated converters | not started | | |
 | 8 | Exports | not started | | |
@@ -206,6 +206,66 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
 - (Phase 4, live) Renaming a page REGENERATES its slug from the new title (pathauto, matches the
   Phase 3 setTitle fact): the slug returned by `create_page` is stale after
   `update_page_details(title=...)` — use the rename result's slug for later slug-addressed reads.
+- (Phase 5, source, CRITICAL) **The npm-published `@haxtheweb/haxcms-nodejs@26.8.1` dist is STALE**
+  — it predates spec commit e969655c (`specs/VERSION` pins "26.8.1 e969655c") and lacks the whole
+  files datastore/enrichment: NO uuid/width/height on upload, NO `files.json`, NO `compress` or
+  `duplicate` operations, and scale/convert/sepia/black-and-white write NEW
+  `files/imgops/<base>-<W>x<H>.jpg` instead of transforming in place. The sibling checkout
+  `../haxcms-nodejs` is at EXACTLY e969655c and has the full API. **Every Phase 5 fact below is
+  against e969655c (the sibling), NOT the npm dist.** Target the spec + sibling source, never the
+  dist. See Phase 5 Deviations for the runtime-resolution change this forced.
+- (Phase 5, live, e969655c) `POST files` (multipart field `file-upload`; multer `.any()` also takes
+  `upload`/`file`/`files[]`) → `{file:{path, url, fullUrl, type, name, size, uuid, width, height,
+  mimetype, dateCreated}}`. The uuid is REAL (deterministic `sha256(siteName:canonicalPath:size)`
+  rendered in uuid form, `src/lib/siteFileUuid.js`) and width/height come from sharp — the 120x80 and
+  100x60 fixture PNGs return those exact dimensions. `url`/`path` are site-relative (`files/<name>`).
+  A `nodeId` multipart field loads the page but upload NO LONGER appends to `page.metadata.files`
+  (#3043).
+- (Phase 5, source, e969655c) `fullUrl` is ROOT-RELATIVE via `buildFilePublicUrl`
+  (`src/lib/siteFileUrl.js`): single-site → `/<relPath>`; multisite →
+  `<basePath><sitesDirectory>/<siteName>/<relPath>`. On the multisite test runtime that is
+  `/_sites/<site>/files/<name>` (basePath `/`, sitesDirectory `_sites`). It is absolute (`http…`)
+  ONLY if the instance is configured with an absolute basePath. The upload response fullUrl is bare;
+  `buildFileRecord` (list/get/rename/scale/...) appends `?t=<dateCreated>` (or `&t=` if already
+  queried).
+- (Phase 5, source + live, e969655c) `GET files` (list) reads the `files.json` datastore (envelope
+  `{schema:"HAXCMS-FILE-SCHEMA-V1", data:{path:"files", files:[...]}}`), auto-indexes on-disk files
+  missing from it before returning (`reconcileMissingFromDisk`), and flags records whose disk file is
+  gone in a NON-destructive `orphans` array (`flagOrphans`; files.json is not mutated for orphans).
+  Records carry width/height/mimetype/dateCreated and the `?t=` fullUrl. Filters: `filter.type`,
+  `filter.extension` (leading dot stripped, case-insensitive), `filter.nameContains`,
+  `filter.startsWith`, plus pagination/sort/fields.
+- (Phase 5, source + live, e969655c) File identity is STABLE across content changes:
+  `upsertFileRecordInDataStore` (`src/siteRoutes/v1/files.js` L1005) looks up the existing uuid (by
+  OLD path for rename, same path for in-place ops), rebuilds the record from disk, then overwrites
+  `record.uuid = existingUuid` — "files.json owns identity, uuid stable across content changes". The
+  deterministic `sha256(path:size)` uuid is only used for genuinely NEW paths (upload, duplicate).
+- (Phase 5, source + live, e969655c) `PATCH files/{uuid}` (`{operation, newName?, size?, level?}`):
+  `rename` → `fs.moveSync`, uuid PRESERVED (re-keyed to the new path, old record scrubbed), basename
+  SANITIZED by `sanitizeFileRenameBaseName` (lowercase, `[^a-z0-9-]`→`-`, collapse runs, trim) so
+  "Renamed_1"→"renamed-1", extension LOCKED (change → HTTP 400), response `{operation, source, path,
+  file}`. `duplicate` → `fs.copySync` to `<base>-copy.<ext>` (collision: `-copy-2`, ...), NEW uuid,
+  `{operation, source, path, file}`. `scale` (`size` xs150/sm480/md800/lg1200/xl1920, default md) →
+  IN PLACE (`scaleImageInPlace`, sharp `fit:inside, withoutEnlargement:true`, re-encode same format,
+  `moveSync` overwrite same path), uuid preserved; a 120x80 png scaled to `sm` stays 120x80 png.
+  `compress` (`level` light90/medium70/heavy50/maximum30, default medium) → in place, uuid preserved.
+  `convert-jpg` → `<base>.jpg` in the SAME dir (collision-safe `<base>_1.jpg`; jpg source re-encodes
+  in place). `sepia`/`black-and-white`/`rotate-90` → in place, format/filename preserved, uuid
+  preserved. NONE of the in-place ops create a `files/imgops/` file (that is the stale-dist
+  behaviour). In-place responses are `{operation, path, file}`.
+- (Phase 5, source + live, e969655c) `DELETE files/{uuid}` → `fs.removeSync` + git commit, then
+  `FileStorage.delete(uuid)` scrubs the files.json record AND removes the uuid from every page's
+  `page.metadata.files` (one manifest save); a later `get`/`list` → NOT_FOUND / absent.
+- (Phase 5, live, e969655c) Error mapping: a disallowed extension on upload → HTTP 500 'File type not
+  allowed' (→ UPSTREAM_ERROR), NOT 400; a rename that changes the extension → HTTP 400 (→
+  INVALID_ARGUMENT).
+- (Phase 5, live, e969655c) The `add_image_from_file` composite is the path that DOES populate
+  `page.metadata.files`: upload (which alone no longer touches metadata.files) → insert a
+  `media-image` whose `source` is the uploaded `files/<name>` url → the block insert SAVES the page →
+  `saveNode` rebuilds `metadata.images` (from the media schema = the set of source urls) AND
+  `metadata.files` (from a content path-scan, `FileContentScanner.rebuildPageFilesUuids`, resolving
+  each `files/...` reference to its files.json uuid). Verified live: after placing two images,
+  `metadata.images == {url_1, url_2}` and `metadata.files == {uuid_1, uuid_2}`.
 
 ## Environment notes
 
@@ -249,6 +309,16 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
   PowerShell tool with run_in_background + `Out-File -Encoding utf8` instead.
 - pytest-timeout is NOT installed: a `--timeout=N` flag fails pytest argument parsing. Hangs are
   guarded by the loop-scope settings (see above) and diagnosed with `uvx py-spy dump`.
+- **Test runtime resolution (Phase 5+):** `tests/harness/haxcms_runtime.py::_test_haxcms_dir()` now
+  auto-prefers the sibling checkout `../haxcms-nodejs` (at e969655c) over the npm dist when present,
+  because the npm-published 26.8.1 dist is stale (see Verified facts). `HAXCMS_MCP_TEST_HAXCMS_DIR`
+  still overrides; with no sibling (e.g. CI) it falls back to the npm dist. `ensure_haxcms()` runs
+  `npm install` inside the sibling on first use (creates `../haxcms-nodejs/node_modules` +
+  `package-lock.json`; 812 packages ≈ 41s once) — deps only, NO source edits (user-approved). Boot
+  from the checkout ≈ 35s cold. The repo/CI never set `HAXCMS_MCP_TEST_HAXCMS_DIR`.
+- Phase 5 timings: full `uv run pytest -m "not e2e"` (511 tests) ≈ 240s — 443 unit/regression + 68
+  live (58 Phase 0-4 + 10 Phase 5); first e969655c run for Phases 0-4, no regressions. The Phase 5
+  live suites alone (9 integration + 1 functional) ≈ 32s warm / ~64s including a cold boot.
 
 ---
 
@@ -760,3 +830,113 @@ GET==disk; the schemas haxProperties route DOES return self-check data) plus the
   `haxcms.read_page_html` cover its assertions.
 - Scratch pytest files must NOT start with a leading dot (importlib rejects them at
   collection); use `probe_tmp.py` and delete after.
+
+---
+
+### Phase 5: Files
+
+**Session:** shared with Phases 0-4 (compacted several times)
+**Completed:** 2026-10-01, tag `phase-05`, final commit: see tag
+
+**Built** (6 commits, exactly the PLAN Phase 5 list)
+- `models/file.py` — `FileRecord` (extra=allow; `uuid:str=""`, `width/height:int|None=None`;
+  `from_api` accepts mimetype-or-type and coerces width/height to int when truthy),
+  `FileCollection` (`{count, total, page, files, orphans}`), `UploadResult` (`{file}`).
+- `client/site_api.py` Phase 5 helpers — `list_files`, `upload_file` (multipart field `file-upload`,
+  optional `nodeId` data), `get_file`, `update_file` (`{operation, **args}`), `delete_file`; all
+  `auth="bearer+site"` per the spec `security:` blocks.
+- `services/files/sources.py` — resolve a file source: a local path (under `input_roots`), an http(s)
+  URL (fetched server-side by THIS MCP server), or `base64:<name>:<payload>` inline (rejected over
+  `MAX_INLINE_BASE64_MB` → FILE_SOURCE_ERROR); sniffs the mimetype from the bytes.
+- `services/files/service.py` — `upload_file` (resolve_source → optional page→node_id →
+  site_api.upload_file → UploadResult), `list_files`, `get_file`, `rename_file`, `transform_file`
+  (scale/compress/convert-jpg/sepia/black-and-white/rotate-90), `duplicate_file`, `delete_file`, and
+  the `add_image_from_file` composite (upload → `catalog.validate("media-image")` →
+  `build_block_html(source=record.url)` → `insert_block` → `{file, ...block-op result}`).
+- `tools/files.py` — the eight files tools with agent-manual docstrings (source forms, uuid
+  semantics, `files/<name>` url usage, transform-accumulation + rename/delete dangling-source
+  warnings, orphans reporting). Annotations: list_files/get_file read-only;
+  upload_file/transform_file/duplicate_file/add_image_from_file `idempotent=False`; rename_file
+  idempotent; delete_file destructive. `server.py` registers them after the typed block tools (the
+  composite shares the server-wide `CatalogService`) → **86 tools** total.
+
+**Tests added**
+- unit + regression: Phase 5 model/source/service/tool tests across commits 1-4 → unit+regression
+  total **443** (388 at Phase 4 + 55 new); `tool_schemas.json` regenerated for 86 tools (the eight
+  files schemas frozen).
+- integration: `test_p05_files.py` (9) — the PLAN lifecycle (upload by path → list with width/height
+  → get → rename → duplicate → scale → delete, disk + files.json asserted at each step), list filters
+  (type/extension/name_contains), URL upload from a tiny local http server, base64 upload,
+  oversize-inline rejection, and the T5.7 probes (alternate multipart field, disallowed extension →
+  UPSTREAM_ERROR, rename extension-lock → INVALID_ARGUMENT, nodeId upload leaves metadata.files
+  alone).
+- functional: `test_p05_tutorial_images.py` (1) — place the tutorial's two images with
+  add_image_from_file, golden media-image attributes vs `tutorial_finished.html`, and the
+  metadata.images/files rebuild.
+- fixtures: `tests/fixtures/images/Songline_1.png` (120x80), `Songline_2.png` (100x60).
+- full rerun: `uv run pytest -m "not e2e"` → **511 passed in 239.69s** (443 unit/regression + 68
+  live) — the FIRST e969655c run for Phases 0-4; no regressions.
+
+**Verified facts** — see the cumulative list above (all Phase 5 bullets): the stale-npm-dist finding,
+upload uuid/width/height, root-relative fullUrl, the files.json datastore + orphans, uuid stability
+via upsertFileRecordInDataStore, rename sanitisation + extension lock, duplicate `-copy`, in-place
+scale/compress/convert/sepia/bw/rotate (no imgops), delete scrubbing files.json + metadata.files, the
+500-vs-400 error mapping, and the add_image_from_file metadata rebuild.
+
+**Deviations from PLAN.md**
+- **The npm-published `@haxtheweb/haxcms-nodejs@26.8.1` dist is STALE** (predates spec commit
+  e969655c that `specs/VERSION` pins) and lacks the entire files datastore/enrichment (no
+  uuid/width/height on upload, no files.json, no compress/duplicate, imgops-style non-in-place
+  transforms). Phase 5's live suites FAIL against the dist on facts the spec (`specs/site-spec.yaml`)
+  and PLAN Phase 5 REQUIRE. Root-caused by reading both builds — a runtime version skew, NOT an
+  implementation bug (my models/service/tests were correct per spec).
+  - **Resolution (user-approved):** `_test_haxcms_dir()` now auto-prefers the sibling checkout
+    `../haxcms-nodejs` (PLAN §0.4 lists it as optional; it is at exactly e969655c) over the npm dist
+    when present. `ensure_haxcms()` `npm install`s the sibling's dependencies
+    (`../haxcms-nodejs/node_modules` + `package-lock.json`; deps only, NO source edits) to get an
+    e969655c-matching runtime. The user explicitly approved installing into the otherwise read-only
+    reference checkout. `HAXCMS_MCP_TEST_HAXCMS_DIR` still overrides; the harness falls back to the
+    npm dist when there is no sibling.
+  - The harness change is bundled INTO the `test(files)` commit (commit 5), not a separate
+    `fix(harness)` commit: it is the runtime resolution that makes these very tests meaningful, and
+    bundling keeps PLAN's Phase 5 commit list intact (5 = tests, 6 = docs).
+- `site_api.upload_file`'s docstring was corrected to the live contract (field is `file-upload`;
+  multer `.any()` also accepts upload/file/files[]; a disallowed extension is HTTP 500 'File type not
+  allowed', not the 400 first assumed).
+- PLAN Phase 5 lists the operations "convert-jpg|scale|sepia|black-and-white|rotate-90|compress" +
+  `duplicate_file`; ALL exist in e969655c and are implemented. (The stale dist lacks compress +
+  duplicate — another symptom of the skew.)
+
+**Known gaps / follow-ups**
+- **CI runs against the STALE npm dist.** `.github/workflows/ci.yml` sets only
+  `HAXCMS_MCP_TEST_HAXCMS_VERSION: "26.8.1"` and has no sibling checkout, so `_test_haxcms_dir()`
+  returns None and `ensure_haxcms()` npm-installs the stale dist → the Phase 5 live suites
+  (integration + functional) would FAIL in CI on the missing uuid/width/height/compress/duplicate.
+  **Fix options:** (a) CI checks out `haxcms-nodejs` at e969655c as a sibling and sets
+  `HAXCMS_MCP_TEST_HAXCMS_DIR`, or (b) npm republishes a 26.8.1 build actually at e969655c, or (c)
+  the Phase 5 live suites are gated/skipped in CI until then. NOT addressed in Phase 5 (out of
+  scope); recorded for Phase 9 hardening / CI work.
+- Phases 0-4 live suites all pass against e969655c (full rerun) — no version-skew regressions
+  outside the files API. The stale dist and e969655c are behaviourally identical for everything
+  Phases 0-4 touch; future Phases must still target e969655c/spec, not the dist.
+- `add_image_from_file` places exactly ONE media-image per call; multi-image placement is multiple
+  calls (each its own upload + insert + save + git revision).
+
+**Notes for the next Session**
+- Phase 6 (Site settings) targets the SAME e969655c runtime (the harness now auto-prefers the
+  sibling). Verify each settings route against `specs/site-spec.yaml` + the sibling source, NOT the
+  npm dist.
+- Phase 6 carried notes (from earlier source reads, re-verify before coding): PATCH site saveManifest
+  `{site, theme, author, seo}` wrapper; `site/appearance`, `site/seo`, `site/editor`
+  (`{platform:{audience}}`), `site/blocks` (`{platform:{allowedBlocks|null}}`), `site/platform`
+  (`{platform:{features:{key:bool}}}` — verify nesting); POST `site/updateAlternativeFormats`;
+  manifest flat dash-separated keys; cssVariable `--simple-colors-default-theme-<color>-7` or bare;
+  feature key false → 403 FEATURE_DISABLED; git settings live in `metadata.site.git` with NO v1 route
+  → `configure_site_git` should return a clear "unsupported" after verification.
+- The `files.json` datastore (`FilesDataStore`, envelope HAXCMS-FILE-SCHEMA-V1) is the source of truth
+  for file identity — any later tool needing "which uuid is this file" must read files.json (via
+  list/get), never recompute the deterministic sha256 (it shifts on size change).
+- `upsertFileRecordInDataStore`, `buildFilePublicUrl` (`src/lib/siteFileUrl.js`) and
+  `sanitizeFileRenameBaseName` (all in `../haxcms-nodejs/src/siteRoutes/v1/files.js` unless noted) are
+  the executable spec of the file operations — re-read them if Phase 7+ (import/export) touches
+  files.
