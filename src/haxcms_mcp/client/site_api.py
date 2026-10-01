@@ -33,7 +33,7 @@ from typing import Any
 from urllib.parse import quote
 
 from haxcms_mcp.client import HaxcmsClient
-from haxcms_mcp.client.envelope import unwrap_dict, unwrap_full
+from haxcms_mcp.client.envelope import error_from_response, unwrap_dict, unwrap_full
 
 # --- Phase 2: public site-level reads -------------------------------------------------
 
@@ -568,3 +568,73 @@ async def update_alternative_formats(
         site=site,
     )
     return unwrap_dict(response)
+
+
+# --- Phase 8: exports (T8.2) -------------------------------------------------------------------
+# Source-verified in ../haxcms-nodejs/src/siteRoutes/v1/exports.js + SiteRoutesMap.js:
+# GET site/export/{format} sends a Content-Disposition attachment (RAW bytes, no envelope)
+# for pdf/docx/epub/html and a DESCRIPTOR JSON for zip/markdown/skeleton; unsupported formats
+# are 400 {data: {message, supportedFormats}}; conversion failures (pdf/docx — e.g. no Chrome
+# for pdf) are JSON {status, data.message} at 502. GET items/{idOrSlug}/export/{format} is a
+# binary download for ALL eight item formats. Both use the export timeout (rendering a whole
+# site through Puppeteer/epub-gen is slow).
+
+
+async def site_export(client: HaxcmsClient, site: str, format: str) -> bytes | dict[str, Any]:
+    """GET site/export/{format} -> BYTES (pdf/docx/epub/html) or a DESCRIPTOR dict.
+
+    The descriptor (zip/markdown/skeleton) is `{format, supportedFormats, export: {rel,
+    mediaType, href, ...}, links}` — `export.href` names the route that really produces
+    the bytes (system `download`/`download-skeleton` POSTs, or `content?mode=concat&
+    format=md`). Discriminator: the Content-Type the server set (application/json vs the
+    format's binary media type).
+    """
+    response = await client.request(
+        "GET",
+        client.site_path(site, f"site/export/{format}"),
+        auth="bearer",
+        timeout=client.settings.export_timeout_s,
+    )
+    if response.status_code >= 400:
+        raise error_from_response(response)
+    if response.headers.get("content-type", "").startswith("application/json"):
+        return unwrap_dict(response)
+    return response.content
+
+
+async def item_export(client: HaxcmsClient, site: str, id_or_slug: str, format: str) -> bytes:
+    """GET items/{idOrSlug}/export/{format} -> RAW bytes for EVERY format.
+
+    Formats: pdf|docx|html|md|json|yaml|xml|epub. json/yaml/xml serialize the item summary
+    PLUS its `content`; md is turndown markdown under a `# {title}` heading; the
+    Content-Disposition filename is the sanitized slug. Anonymous callers 404 on
+    unpublished items — we send bearer, so unpublished items export too.
+    """
+    response = await client.request(
+        "GET",
+        _item_path(client, site, id_or_slug, f"export/{format}"),
+        auth="bearer",
+        timeout=client.settings.export_timeout_s,
+    )
+    if response.status_code >= 400:
+        raise error_from_response(response)
+    return response.content
+
+
+async def site_markdown(client: HaxcmsClient, site: str) -> str:
+    """GET content?mode=concat&format=md -> the whole site as concatenated markdown.
+
+    This is the href the `site/export/markdown` descriptor points at; `format=md` selects
+    the raw text/markdown representation (sendFormattedResponse's rawByFormat), NOT the
+    JSON envelope.
+    """
+    response = await client.request(
+        "GET",
+        client.site_path(site, "content"),
+        params={"mode": "concat", "format": "md"},
+        auth="bearer",
+        timeout=client.settings.export_timeout_s,
+    )
+    if response.status_code >= 400:
+        raise error_from_response(response)
+    return response.text

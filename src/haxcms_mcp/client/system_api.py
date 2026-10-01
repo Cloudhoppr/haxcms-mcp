@@ -309,3 +309,78 @@ async def action(
             raise error_from_response(response)
         return response.content
     return unwrap(response)
+
+
+# --- Phase 8: downloads, skeletons, templates (T8.2) ------------------------------------------
+# All three POSTs sit on SystemRoutesMap's admin list (bearer + X-HAXCMS-User-Token, the same
+# gate clone/archive use). Response shapes source-verified in
+# ../haxcms-nodejs/src/systemRoutes/v1/routes/{downloadSite,downloadSiteSkeleton,
+# saveSiteAsTemplate}.js; the zips are served from the static, UNAUTHENTICATED _published
+# mount (app.js `app.use('/_published/', ...)`).
+
+
+async def download_site(client: HaxcmsClient, site: str) -> dict[str, Any]:
+    """POST sites/{name}/download -> `{link: "/_published/<name>.zip", name: "<name>.zip"}`.
+
+    The server zips the whole site folder (minus node_modules/.git) into the _published
+    directory; fetch the bytes with `fetch_published(client, link)`. Zipping runs inside
+    the request, so the call gets the export timeout.
+    """
+    response = await client.request(
+        "POST",
+        client.sys(f"sites/{site}/download"),
+        json={"site": {"name": site}},
+        auth="bearer+user",
+        timeout=client.settings.export_timeout_s,
+    )
+    return unwrap_dict(response)
+
+
+async def download_site_skeleton(client: HaxcmsClient, site: str) -> dict[str, Any]:
+    """POST sites/{name}/download-skeleton -> `{skeleton, filename: "<machineName>.json"}`.
+
+    The skeleton comes back INLINE — API-REF §3.4 guessed `{link, name}`; the source shows
+    `{skeleton, filename}`. Shape: `{meta: {name, machineName, type: "skeleton", ...},
+    site: {name, description, theme, settings, platform}, build: {type: "skeleton",
+    structure: "from-skeleton", items: [{id, title, slug, order, parent, indent, content,
+    metadata}], files: []}, theme, _skeleton}` — items carry their page CONTENT inline.
+    """
+    response = await client.request(
+        "POST",
+        client.sys(f"sites/{site}/download-skeleton"),
+        json={"site": {"name": site}},
+        auth="bearer+user",
+        timeout=client.settings.export_timeout_s,
+    )
+    return unwrap_dict(response)
+
+
+async def save_site_as_template(client: HaxcmsClient, site: str) -> dict[str, Any]:
+    """POST sites/{name}/save-as-template -> `{saved, name, filename, path, link}`.
+
+    Writes the generated skeleton to `<configDirectory>/user/skeletons/<machineName>.json`;
+    the skeletons list route scans core AND user directories, so the template shows up in
+    `list_skeletons` (and `get_skeleton(name)` follows the returned `link`).
+    """
+    response = await client.request(
+        "POST",
+        client.sys(f"sites/{site}/save-as-template"),
+        json={"site": {"name": site}},
+        auth="bearer+user",
+        timeout=client.settings.export_timeout_s,
+    )
+    return unwrap_dict(response)
+
+
+async def fetch_published(client: HaxcmsClient, link: str) -> bytes:
+    """GET a `download_site` link off the static _published mount -> the raw zip bytes.
+
+    The mount has NO auth (app.js serves it with res.sendFile), so this is auth="none";
+    the export timeout covers large sites on slow disks.
+    """
+    response = await client.request(
+        "GET", link, auth="none", timeout=client.settings.export_timeout_s
+    )
+    if response.status_code >= 400:
+        raise error_from_response(response)
+    return response.content
