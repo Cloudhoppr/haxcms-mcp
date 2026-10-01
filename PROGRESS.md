@@ -16,7 +16,7 @@ Read order at the start of a Session: PLAN.md §0 → CONTEXT.md → this file �
 | 3 | Outline and page tools | done | `phase-03` | see tag |
 | 4 | Content and block tools | done | `phase-04` | see tag |
 | 5 | Files | done | `phase-05` | see tag |
-| 6 | Site settings | not started | | |
+| 6 | Site settings | done | `phase-06` | see tag |
 | 7 | Imports and generated converters | not started | | |
 | 8 | Exports | not started | | |
 | 9 | Prompts, docs, hardening, e2e | not started | | |
@@ -267,6 +267,59 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
   each `files/...` reference to its files.json uuid). Verified live: after placing two images,
   `metadata.images == {url_1, url_2}` and `metadata.files == {uuid_1, uuid_2}`.
 
+- (Phase 6, source + live probes, e969655c) **The full saveManifest form path is UNREACHABLE at
+  runtime.** `PATCH site` has two paths: the scoped-details path (body `manifest` OBJECT with the
+  dash-keyed admin-UI keys) writes ONLY `manifest-title`, `manifest-metadata-site-homePageId`,
+  `manifest-metadata-site-settings-sw`, `manifest-metadata-site-settings-forceUpgrade`; everything
+  else falls to the full form path requiring `haxcms_form_token`, which `validateRequestToken`
+  accepts only when `process.env.haxcms_middleware === "node-cli"` (`isCLI()`, HAXCMS.js L3675-3677)
+  — false under any live server. Live probes: a git/tags-only manifest body → 403
+  `{data:{message:'Authentication required'}}` with site.json byte-identical; git keys smuggled
+  alongside `manifest-title` → 200, title written, git keys SILENTLY IGNORED. Consequence:
+  `metadata.site.tags` and `metadata.site.git` are not writable through the 26.8.1 API →
+  `update_site_info(tags=...)` and `configure_site_git` fail fast UNSUPPORTED.
+- (Phase 6, source + live) `GET /_sites/{site}/site.json` serves the raw JSON manifest PUBLICLY (no
+  `{status, data}` envelope) — the only complete settings read and the source of the `SiteSettings`
+  view.
+- (Phase 6, T6.5, golden-captured in `settings_payloads.json`) Wire shapes: `PATCH site/seo` takes
+  TOP-LEVEL `seo` + `author` wrappers beside `site.name` (NOT `manifest.seo`), short keys inside
+  (`gaID`, `publishPagesOn`, `socialLink`; `license` inside the author wrapper → stored on the
+  TOP-LEVEL manifest `license`); `PATCH site/platform` takes `platform.features` NESTED (not flat);
+  `PATCH site/editor` takes `platform.audience`; `PATCH site/blocks` takes `platform.allowedBlocks`
+  (JSON `null` = unrestricted); scoped `PATCH site` takes `manifest.site` dash keys; `PATCH
+  site/appearance` takes ONLY `manifest-metadata-theme-*` keys. `update_site_info(home_page=...)`
+  needs the ITEM ID on the wire (the service pre-resolves slug → id).
+- (Phase 6, source + live) `saveAppearanceSettings` normalisation: palette trimmed + lowercased; a
+  bare accent color is stored as `--simple-colors-default-theme-<color>-7`; region arrays
+  Set-deduped; **a theme ELEMENT change REPLACES the whole `metadata.theme` with the registry
+  theme's defaults** (palette/accent/icon/banner/regions ALL reset — `set_site_theme` warns and
+  takes everything in one call).
+- (Phase 6, source + live) pathauto: `saveNode` regenerates the slug from the title only when
+  `metadata.site.settings.pathauto === true` (STRICT) and the page has no
+  `metadata.overridePathauto`; the live toggle steers a later rename both ways
+  (`test_p06_settings.py`).
+- (Phase 6, source + live) `saveAllowedBlocks` stores arrays deduped + SORTED, `null` as JSON null,
+  and always ensures the platform container `{audience:'expert', features:{}, allowedBlocks:[]}`.
+  `savePlatformSettings` REPLACES the whole features object → the service merges the passed flags
+  over the current ones. `deletePage: false` → `delete_page` 403 'Delete is disabled for this site'
+  → FEATURE_DISABLED (live-verified, T6.5).
+- (Phase 6, live) Feature-gate 403s vary the verb but share the suffix `disabled for this site`
+  ('Delete is disabled for this site', '...are disabled for this site') — the envelope mapper
+  matches the suffix (commit 982960f broadened it from 'are disabled for this site').
+- (Phase 6, live) `POST site/updateAlternativeFormats` takes an optional `{format}` ∈ {rss,
+  sitemap, search, llms, service-worker} (omitted = regenerate ALL) → `data: true`; not
+  feature-gated.
+- (Phase 6, live dump-probe) Fresh-site site.json defaults: top-level keys include the JSON Outline
+  Schema `author` set to `""` (NAME-COLLIDES with the parsed metadata.author view — extras must
+  skip declared field names) and `location`; `metadata.site` = {created, git: {vendor: 'github',
+  branch: 'gh-pages'}, license, logo, name, settings: {lang: 'en-US', publishPagesOn: true,
+  canonical: true, pathauto: true}, updated} — **`homePageId` is ABSENT until the first manifest
+  write** (read it with `.get()`); `metadata.theme` = the FULL registry copy (element, path, name,
+  thumbnail, description, category, hidden, priority, terrible, supportedPalettes, variables {icon,
+  hexCode, cssVariable}) WITHOUT `regions`; `metadata.author` = {}; `metadata.platform` =
+  {audience: 'expert', features: {}, allowedBlocks: []}. Every manifest write bumps
+  `metadata.site.updated` (epoch seconds) and git-commits.
+
 ## Environment notes
 
 - HAXcms install time / boot time on this machine: npm install of
@@ -319,6 +372,8 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
 - Phase 5 timings: full `uv run pytest -m "not e2e"` (511 tests) ≈ 240s — 443 unit/regression + 68
   live (58 Phase 0-4 + 10 Phase 5); first e969655c run for Phases 0-4, no regressions. The Phase 5
   live suites alone (9 integration + 1 functional) ≈ 32s warm / ~64s including a cold boot.
+- Phase 6 timings: full `uv run pytest -m "not e2e"` (596 tests) ≈ 281s — 513 unit/regression + 83
+  live; the Phase 6 live suites alone (11 integration + 3 git + 1 functional) ≈ 43s warm.
 
 ---
 
@@ -940,3 +995,101 @@ scale/compress/convert/sepia/bw/rotate (no imgops), delete scrubbing files.json 
   `sanitizeFileRenameBaseName` (all in `../haxcms-nodejs/src/siteRoutes/v1/files.js` unless noted) are
   the executable spec of the file operations — re-read them if Phase 7+ (import/export) touches
   files.
+
+---
+
+### Phase 6: Site settings
+
+**Session:** shared with Phases 0-5 (compacted several times)
+**Completed:** 2026-10-01, tag `phase-06`, final commit: see tag
+
+**Built** (PLAN's 6 commits plus 2 inserted fix commits — see Deviations)
+- `models/settings.py` — `SiteSettings` (view over the PUBLIC site.json manifest), `ThemeSettings`,
+  `SeoSettings`, `AuthorSettings`, `GitSettings` (read-only), `PlatformSettings` +
+  `PlatformFeatures` (the 21 flags via `FEATURE_FIELD_MAP`); lenient `_flag` boolean mirroring the
+  server's parseBooleanFromInput; every block `extra="allow"`; declared field names excluded from
+  `**extras` (live-collision fix, commit 2c7f35b).
+- `client/site_api.py` helpers — `fetch_site_manifest` (public raw site.json), `update_manifest`
+  (scoped `manifest` object), `update_appearance`, `update_seo`, `update_editor`,
+  `update_allowed_blocks`, `update_platform`, `update_alternative_formats`; all `auth="bearer+site"`.
+- `services/settings.py` — pure payload builders (`build_scoped_manifest_payload`,
+  `build_appearance_theme`, `build_seo_fields`, `build_author_fields`) + the eleven service
+  functions: home_page/region slug→id pre-resolution; theme validated against the live registry
+  (hidden themes pass with a warning); element-change warning; dashed allowed-block tags
+  pre-validated against the WC registry (the server's 400 is generic — ours names the offender);
+  platform features MERGED over current (the route REPLACES); tags + git fail fast UNSUPPORTED
+  before any network call.
+- `tools/settings.py` — the eleven T6.4 tools with agent-manual docstrings (element-reset warning,
+  all 21 feature keys + the siteManifest self-lockout warning, tags/git UNSUPPORTED + Operator
+  hints, null-unrestricts semantics); `server.py` registers them after the files tools → **97
+  tools**.
+- `client/envelope.py` — gate matching broadened to the shared suffix `disabled for this site`
+  (commit 982960f).
+
+**Tests added**
+- unit: `test_p06_settings_models.py` (6), `test_p06_settings_service.py` (26, respx),
+  `test_p06_payloads.py` (17 goldens/allow-lists) → unit+regression total **513**.
+- integration: `test_p06_settings.py` (11 — every tool against the live runtime, asserting the
+  returned view AND site.json on disk; the pathauto toggle steers a later rename; the deletePage
+  gate → FEATURE_DISABLED → page survives → re-enable → delete works), `test_p06_git.py` (3 — the
+  form-token-wall probe, the silently-ignored-keys probe, the UNSUPPORTED tool + still-reported git
+  block).
+- functional: `test_p06_theme_journey.py` (1 — create with clean-one → switch to learn-two-theme
+  with palette+accent+icon in ONE call → assign the Welcome page to sidebarFirst AFTER the switch →
+  view + disk).
+- regression: `tool_schemas.json` regenerated twice (87 → 97 tools), each diff verified purely
+  additive with a UTF-8-safe Python comparison; new golden `settings_payloads.json` (the ten wire
+  payloads, respx-captured).
+- full rerun: `uv run pytest -m "not e2e"` → **596 passed in 280.81s** (513 unit/regression + 83
+  live). `ruff check` + `ruff format --check` + `mypy src` (70 files) clean.
+
+**Verified facts** — see the cumulative list above (all Phase 6 bullets). T6.5 answers: the SEO
+wrapper is the top-level `seo` + `author` pair with SHORT keys (not `manifest.seo`); platform
+features are `platform.features` NESTED; `home_page` needs the item id on the wire (slugs
+pre-resolved); `deletePage=false` → `delete_page` FEATURE_DISABLED, live-confirmed. T6.3 git
+verification: NO route persists `metadata.site.git` → `configure_site_git` raises UNSUPPORTED
+(both directions live-probed in `test_p06_git.py`).
+
+**Deviations from PLAN.md**
+1. T6.1: `SiteSettings` is a view over the PUBLIC `GET /_sites/{site}/site.json`, not
+   `SiteSummary.metadata` — the public site summary carries no metadata block and the system
+   `GET sites/{name}` metadata is only `{pageCount, created, updated}`.
+2. `update_site_info(tags=...)` → UNSUPPORTED: PLAN lists tags among the writable site-info fields,
+   but no reachable route persists `metadata.site.tags` (form-token wall). Fails before any other
+   field is applied; the integration case asserts UNCHANGED site.json instead of PLAN's on-disk
+   tags change. Operator recovery: edit site.json server-side.
+3. `configure_site_git` → always UNSUPPORTED (T6.3's own verification branch, live-probed).
+   `get_site_settings` still REPORTS the git block.
+4. `set_platform_features` merges the passed flags over the current set before the PATCH —
+   `savePlatformSettings` has REPLACE semantics, and the merge preserves PLAN's "only the flags you
+   pass change" contract.
+5. Commit list: PLAN names 6; 8 landed — inserted `fix(client)` 982960f (the gate-suffix mapping,
+   discovered while wiring the Phase 6 services; benefits every phase), and commit 5 split into
+   `fix(settings)` 2c7f35b + `test(settings)` 919b163 so the fixes stay reviewable.
+6. The functional journey runs on its own throwaway site (created with clean-one, first page
+   "Welcome") rather than the shared tutorial course — same coverage, isolated fixture.
+7. Two live-caught bugs fixed in 2c7f35b (contract hazards for any future manifest parser): the
+   fresh-site top-level JSON Outline Schema `author: ""` collided with `SiteSettings.author`
+   through `**extras` (TypeError on EVERY real get_site_settings; unit fixtures lacked the key),
+   and `update_author_info`'s `resolve_site` local was named `name`, shadowing the author-name
+   parameter (wrote the site machine name into metadata.author.name).
+
+**Known gaps / follow-ups**
+- The CI stale-dist gap (Phase 5) stands. The Phase 6 routes predate the files-datastore work, so
+  the live suites likely pass against the npm dist too — UNTESTED; still a Phase 9 hardening item.
+- `siteManifest=false` self-lockout is documented (tool docstring warning) but not guarded
+  programmatically — recovery is a server-side site.json edit. Per PLAN's design the warning is the
+  contract.
+- If a future HAXcms exposes tags/git writes, the UNSUPPORTED services are the swap-in points
+  (interfaces + tests already exist).
+
+**Notes for the next Session**
+- Phase 7 (imports + generated converters): `gen_tools.py` generates from `specs/system-spec.yaml`
+  per PLAN; verify the import routes against the e969655c source (`src/systemRoutes/v1/`), never
+  the npm dist.
+- The live-probe pattern that cracked the author collision in one shot: `uv run python - <<EOF`
+  with HaxcmsRuntime + HaxcmsClient + create/try/finally archive — prefer it over source-chasing
+  whenever a live shape is in doubt.
+- `metadata.site.updated` bumping + the git commit on every manifest write are cheap on-disk
+  assertion handles for future live tests.
+- Fresh sites have NO `homePageId` key — always `.get()` it, on both sides of a comparison.
