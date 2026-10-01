@@ -2,12 +2,15 @@
 
 Phase 0 provides: `haxcms` (session-scoped live instance), `settings` (per test, pointing at the
 runtime with credentials), `mcp` (FastMCP app + in-memory client). Phase 1 adds `client` (a
-logged-in HaxcmsClient). The `site` and `page` fixtures arrive with Phases 2-3.
+logged-in HaxcmsClient). Phase 3 adds `site` (a throwaway `mcp-t-<8 hex>` site per test,
+archived on teardown) and `page` (a fresh page in `site`).
 """
 
 from __future__ import annotations
 
+import contextlib
 import os
+import secrets
 from collections.abc import AsyncIterator
 
 import pytest
@@ -15,7 +18,11 @@ from fastmcp import Client
 
 from haxcms_mcp.client import HaxcmsClient
 from haxcms_mcp.config import Settings
+from haxcms_mcp.errors import HaxcmsMcpError
+from haxcms_mcp.models.item import Item
 from haxcms_mcp.server import build_server
+from haxcms_mcp.services import pages as pages_service
+from haxcms_mcp.services import sites as sites_service
 from tests.harness.haxcms_runtime import HaxcmsRuntime
 from tests.harness.mcp_client import McpTestClient
 
@@ -64,3 +71,20 @@ async def mcp(settings: Settings) -> AsyncIterator[McpTestClient]:
     server = build_server(settings)
     async with Client(server) as client:
         yield McpTestClient(server, client)
+
+
+@pytest.fixture
+async def site(client: HaxcmsClient) -> AsyncIterator[str]:
+    """A throwaway live site (`mcp-t-<8 hex>`, clean-one), archived on teardown (PLAN §6.2)."""
+    detail = await sites_service.create_site(client, f"mcp-t-{secrets.token_hex(4)}")
+    try:
+        yield detail.name
+    finally:
+        with contextlib.suppress(HaxcmsMcpError):
+            await sites_service.archive_site(client, detail.name)
+
+
+@pytest.fixture
+async def page(client: HaxcmsClient, site: str) -> AsyncIterator[Item]:
+    """A fresh page in `site` (the site fixture archives it away afterwards)."""
+    yield await pages_service.create_page(client, site, "Test Page")
