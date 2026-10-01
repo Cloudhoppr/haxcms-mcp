@@ -1287,6 +1287,117 @@
       "type": "object"
     }
   },
+  "add_image_from_file": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add image from file"
+    },
+    "description": "Upload an image AND place it on a page in one step (the tutorial flow).\n\n`source` works like upload_file (path / URL / data: / base64:); the file is\nuploaded, associated with `page`, and a `media-image` block is inserted whose\n`source` is the new site-relative `files/<name>` url — so metadata.images and\nthe body stay consistent. `alt` is required; `caption`/`citation` render under\nthe image; `card`/`box` are the HAX treatments; `size` is small|wide.\nAnchor/placement work as in add_block (append/prepend page-level, after/before\nneed an anchor). Returns `{file: <upload record>, ...block-op result}` — one\ngit revision covers the placement; the upload itself is not revisioned.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "alt": {
+          "type": "string"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "box": {
+          "default": false,
+          "type": "boolean"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "card": {
+          "default": false,
+          "type": "boolean"
+        },
+        "citation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "size": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "source",
+        "alt"
+      ],
+      "type": "object"
+    }
+  },
   "add_image_gallery": {
     "annotations": {
       "destructive_hint": false,
@@ -3635,6 +3746,39 @@
       "type": "object"
     }
   },
+  "delete_file": {
+    "annotations": {
+      "destructive_hint": true,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Delete file"
+    },
+    "description": "Delete a file permanently (DESTRUCTIVE — confirm with the user first).\n\nRemoves the disk file and its record. Bodies referencing `files/<name>` are\nNOT rewritten — the media-image blocks pointing at it break visually and must\nbe removed or re-sourced separately.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "uuid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uuid"
+      ],
+      "type": "object"
+    }
+  },
   "delete_page": {
     "annotations": {
       "destructive_hint": true,
@@ -3668,6 +3812,39 @@
       "type": "object"
     }
   },
+  "duplicate_file": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Duplicate file"
+    },
+    "description": "Duplicate a file: the copy gets a NEW uuid (and a name like `x-1.png`).\n\nThe safe pre-step before a destructive transform: duplicate, then transform\nthe copy. Returns the raw operation result; find the copy via list_files.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "uuid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uuid"
+      ],
+      "type": "object"
+    }
+  },
   "get_block_schema": {
     "annotations": {
       "destructive_hint": false,
@@ -3697,6 +3874,39 @@
       },
       "required": [
         "tag"
+      ],
+      "type": "object"
+    }
+  },
+  "get_file": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Get file"
+    },
+    "description": "Get one file record by `uuid` (from list_files / upload_file).\n\nReturns the full record: `path` (on-disk), `fullUrl` (absolute), `url`\n(site-relative `files/<name>`), `mimetype`, `name`, `size`, `dateCreated`,\nand pixel `width`/`height` for images. Unknown uuids fail with NOT_FOUND.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "uuid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uuid"
       ],
       "type": "object"
     }
@@ -3944,6 +4154,74 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {},
+      "type": "object"
+    }
+  },
+  "list_files": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "List files"
+    },
+    "description": "List the site's Files: `{count, total, page, files, orphans}`.\n\nEach record carries `uuid` (the stable id for get/rename/transform/delete),\n`name`, `url` (site-relative, e.g. `files/Songline_1.png` — use it as a\nmedia-image `source`), `mimetype`, `size`, and pixel `width`/`height` for\nimages. Filters combine: `type` (image|video|audio|document), `extension`\n(e.g. `png`, with or without the dot), `name_contains`. Paginated with\n`limit`/`offset`. `orphans` lists records whose file vanished from disk —\nreporting only, nothing is deleted. The route auto-indexes on-disk files\nmissing from the file store before answering.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "extension": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "limit": {
+          "default": 25,
+          "type": "integer"
+        },
+        "name_contains": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "offset": {
+          "default": 0,
+          "type": "integer"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
       "type": "object"
     }
   },
@@ -4408,6 +4686,43 @@
       "type": "object"
     }
   },
+  "rename_file": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Rename file"
+    },
+    "description": "Rename a file (changes its stored name and `files/<name>` URL).\n\nWARNING: pages referencing the OLD url keep pointing at it — HAXcms does not\nrewrite bodies. After renaming an image already placed on a page, update the\nmedia-image `source` with update_block. `new_name` is a plain filename with\nextension. Returns the raw operation result; re-read with get_file.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "new_name": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "uuid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uuid",
+        "new_name"
+      ],
+      "type": "object"
+    }
+  },
   "reorder_pages": {
     "annotations": {
       "destructive_hint": true,
@@ -4807,6 +5122,65 @@
       "type": "object"
     }
   },
+  "transform_file": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Transform file"
+    },
+    "description": "Apply one image transform IN PLACE: convert-jpg, scale, sepia,\nblack-and-white, rotate-90, or compress.\n\n`size` rides along for scale (pixel target as a string); `level` for compress\n(light|medium|heavy|maximum, server default medium). Transforms overwrite the\nstored file and repeat calls accumulate (two rotate-90s turn 180 degrees) —\nduplicate_file first to keep the original. Non-image files fail upstream.\nReturns the raw operation result; re-read with get_file for the new record.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "operation": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "size": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "uuid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uuid",
+        "operation"
+      ],
+      "type": "object"
+    }
+  },
   "update_block": {
     "annotations": {
       "destructive_hint": false,
@@ -5029,6 +5403,61 @@
       },
       "required": [
         "page"
+      ],
+      "type": "object"
+    }
+  },
+  "upload_file": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Upload file"
+    },
+    "description": "Upload a file to the site: `{file: {uuid, name, url, mimetype, size, ...}}`.\n\n`source` is an http(s) URL (fetched by this MCP server), a `data:` URL,\n`base64:<filename>:<payload>`, or a local path — relative paths\nresolve inside HAXCMS_MCP_INPUT_ROOTS and anything outside is rejected\n(FILE_SOURCE_ERROR). MIME is sniffed from the bytes. `filename` overrides the\nstored name (a plain name, no directories); `page` (id or slug) associates the\nupload with that page. Uploading the same source twice creates TWO files —\ncheck list_files first. Max 50mb (the instance's HAXCMS_UPLOAD_LIMIT); the\nserver rejects extensions outside its allow-list. To place an image on a page\nin one step, use add_image_from_file.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
       ],
       "type": "object"
     }

@@ -53,7 +53,8 @@ async def test_server_lists_the_registered_tools() -> None:
     by_name = {t.name: t for t in tools}
     # Phase 1 registers the four session tools (PLAN T1.7); Phase 2 the nine site tools
     # (T2.4); Phase 3 the sixteen outline and page tools (T3.5); Phase 4 the twelve
-    # content tools and the 37 typed block tools (T4.5) — 78 in total.
+    # content tools and the 37 typed block tools (T4.5); Phase 5 the eight files tools
+    # (T5.6) — 86 in total.
     assert sorted(by_name) == [
         "add_accent_card",
         "add_audio",
@@ -70,6 +71,7 @@ async def test_server_lists_the_registered_tools() -> None:
         "add_heading",
         "add_image",
         "add_image_compare",
+        "add_image_from_file",
         "add_image_gallery",
         "add_learning_component",
         "add_license",
@@ -100,8 +102,11 @@ async def test_server_lists_the_registered_tools() -> None:
         "create_pages",
         "create_site",
         "create_site_from_skeleton",
+        "delete_file",
         "delete_page",
+        "duplicate_file",
         "get_block_schema",
+        "get_file",
         "get_outline",
         "get_page",
         "get_page_blocks",
@@ -111,6 +116,7 @@ async def test_server_lists_the_registered_tools() -> None:
         "get_site",
         "get_skeleton",
         "list_blocks",
+        "list_files",
         "list_page_revisions",
         "list_pages",
         "list_sites",
@@ -123,6 +129,7 @@ async def test_server_lists_the_registered_tools() -> None:
         "move_page",
         "normalize_slugs",
         "remove_block",
+        "rename_file",
         "reorder_pages",
         "replace_block",
         "restore_page_revision",
@@ -130,8 +137,10 @@ async def test_server_lists_the_registered_tools() -> None:
         "set_block_text",
         "set_page_content",
         "set_page_parent",
+        "transform_file",
         "update_block",
         "update_page_details",
+        "upload_file",
         "whoami",
     ]
 
@@ -263,14 +272,16 @@ async def test_content_tool_annotations() -> None:
 
 async def test_typed_block_tool_annotations() -> None:
     """Phase 4 typed add_<block> tools (PLAN annotation matrix): every call appends a new
-    block — not read-only, not destructive, and repeating it is NOT idempotent."""
+    block — not read-only, not destructive, and repeating it is NOT idempotent.
+    `add_image_from_file` is excluded: it is the Phase 5 files composite, tested below."""
     mcp = build_server(_settings())
     async with Client(mcp) as client:
         tools = await client.list_tools()
     typed = [
         tool
         for tool in tools
-        if tool.name.startswith("add_") and tool.name not in {"add_block", "add_link"}
+        if tool.name.startswith("add_")
+        and tool.name not in {"add_block", "add_link", "add_image_from_file"}
     ]
     assert len(typed) == 37
     for tool in typed:
@@ -279,6 +290,41 @@ async def test_typed_block_tool_annotations() -> None:
         assert ann.read_only_hint is False, tool.name
         assert ann.destructive_hint is False, tool.name
         assert ann.idempotent_hint is False, tool.name
+
+
+async def test_files_tool_annotations() -> None:
+    """Phase 5 annotation matrix (PLAN T5.6): reads, repeat-differs uploads/transforms,
+    a destructive delete, and the idempotent rename."""
+    mcp = build_server(_settings())
+    async with Client(mcp) as client:
+        tools = await client.list_tools()
+    by_name = {t.name: t for t in tools}
+
+    for name in ["list_files", "get_file"]:
+        tool_ann = by_name[name].annotations
+        assert tool_ann is not None, name
+        assert tool_ann.read_only_hint is True, name
+        assert tool_ann.destructive_hint is False, name
+
+    # uploads/transforms/duplicates/composite repeat to new state -> not idempotent
+    for name in ["upload_file", "transform_file", "duplicate_file", "add_image_from_file"]:
+        tool_ann = by_name[name].annotations
+        assert tool_ann is not None, name
+        assert tool_ann.read_only_hint is False, name
+        assert tool_ann.destructive_hint is False, name
+        assert tool_ann.idempotent_hint is False, name
+
+    # renaming to the same name twice leaves the same end state -> idempotent
+    rename_ann = by_name["rename_file"].annotations
+    assert rename_ann is not None
+    assert rename_ann.read_only_hint is False
+    assert rename_ann.destructive_hint is False
+    assert rename_ann.idempotent_hint is True
+
+    delete_ann = by_name["delete_file"].annotations
+    assert delete_ann is not None
+    assert delete_ann.read_only_hint is False
+    assert delete_ann.destructive_hint is True
 
 
 async def test_get_server_info_payload() -> None:

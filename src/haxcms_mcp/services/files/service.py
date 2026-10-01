@@ -1,8 +1,9 @@
-"""Files service (PLAN Phase 5 T5.4).
+"""Files service (PLAN Phase 5 T5.4 + the T5.5 composite).
 
 Typed wrappers over the five `client/site_api.py` files helpers: source resolution for
-uploads (`resolve_source`), the Phase 5 models for reads, and argument validation for the
-PATCH operations.
+uploads (`resolve_source`), the Phase 5 models for reads, argument validation for the
+PATCH operations, and `add_image_from_file` — upload then place a `media-image` block
+whose `source` is the uploaded site-relative `url`.
 
 Live-contract notes:
 
@@ -24,7 +25,10 @@ from typing import Any
 from haxcms_mcp.client import HaxcmsClient, site_api
 from haxcms_mcp.config import Settings
 from haxcms_mcp.errors import ErrorCode, HaxcmsMcpError
+from haxcms_mcp.models.common import dump_model
 from haxcms_mcp.models.file import FileCollection, FileRecord, UploadResult
+from haxcms_mcp.services.catalog.service import CatalogService
+from haxcms_mcp.services.content.blocks import build_block_html, insert_block
 from haxcms_mcp.services.files.sources import resolve_source
 
 # the six PATCH transforms exposed through transform_file
@@ -190,3 +194,64 @@ async def delete_file(client: HaxcmsClient, site: str, uuid: str) -> dict[str, A
     stay in the HTML.
     """
     return await site_api.delete_file(client, site, _require_uuid(uuid))
+
+
+# --- T5.5 composite --------------------------------------------------------------------------
+
+
+async def add_image_from_file(
+    client: HaxcmsClient,
+    settings: Settings,
+    catalog: CatalogService,
+    site: str,
+    page: str,
+    source: str,
+    alt: str,
+    *,
+    caption: str | None = None,
+    citation: str | None = None,
+    anchor: str | None = None,
+    occurrence: str | int | None = None,
+    placement: str = "append",
+    card: bool = False,
+    box: bool = False,
+    size: str | None = None,
+) -> dict[str, Any]:
+    """Upload `source` then place a `media-image` block whose `source` is the file's URL.
+
+    The upload associates with `page` (multipart `nodeId`); the returned record's
+    site-relative `url` (`files/<name>`) becomes the block's `source`, exactly how HAX
+    references uploaded images. The block is catalog-validated and inserted through the
+    Phase 4 `insert_block` (anchor/placement semantics unchanged), so the media schema
+    (metadata.images) is recomputed and one git revision is committed. Returns
+    `{file: <upload record>, ...<block-op result>}`.
+    """
+    upload = await upload_file(client, settings, site, source, page=page)
+    record = upload.file
+    if record is None:
+        raise HaxcmsMcpError(
+            ErrorCode.UPSTREAM_ERROR,
+            "the upload succeeded but returned no file record",
+            hint="the file may still be stored; check list_files before retrying",
+        )
+    attributes: dict[str, Any] = {
+        "source": record.url,
+        "alt": alt,
+        "caption": caption,
+        "citation": citation,
+        "card": card,
+        "box": box,
+        "size": size,
+    }
+    await catalog.validate("media-image", attributes, site=site)
+    html = build_block_html("media-image", attributes, "")
+    result = await insert_block(
+        client,
+        site,
+        page,
+        html,
+        anchor=anchor,
+        occurrence=occurrence,
+        placement=placement,
+    )
+    return {"file": dump_model(record), **dump_model(result)}
