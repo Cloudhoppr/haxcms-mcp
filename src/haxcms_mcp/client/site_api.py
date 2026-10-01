@@ -33,7 +33,7 @@ from typing import Any
 from urllib.parse import quote
 
 from haxcms_mcp.client import HaxcmsClient
-from haxcms_mcp.client.envelope import unwrap_dict
+from haxcms_mcp.client.envelope import unwrap_dict, unwrap_full
 
 # --- Phase 2: public site-level reads -------------------------------------------------
 
@@ -409,5 +409,162 @@ async def delete_file(client: HaxcmsClient, site: str, uuid: str) -> dict[str, A
     """DELETE files/{uuid} -> the deletion result (no request body)."""
     response = await client.request(
         "DELETE", _file_path(client, site, uuid), auth="bearer+site", site=site
+    )
+    return unwrap_dict(response)
+
+
+# --- Phase 6: site settings -----------------------------------------------------------------
+#
+# All settings routes are bearer + SITE token ('authenticated-site' — the OpenAPI security
+# block `[bearerAuth, siteTokenHeader]` read by validateSiteApiRouteAccess) and resolve the
+# site from the URL path; site.js `delegateToLegacySiteWrite` requires the site-token header
+# and auto-fills body.site.name. Live contract source-verified against ../haxcms-nodejs
+# (e969655c), recorded in PROGRESS.md:
+#
+# * PATCH site (saveManifest): only the SCOPED-DETAILS path is reachable — the full form path
+#   needs a haxcms_form_token that only HAXCMS.loadForm mints and NO route exposes loadForm.
+#   Scoped detection requires body.manifest to be an OBJECT plus at least one of
+#   manifest.site['manifest-title'], manifest.site['manifest-metadata-site-homePageId'],
+#   manifest.seo['manifest-metadata-site-settings-sw'|'-forceUpgrade'] (flat body.title/
+#   homePageId/sw/forceUpgrade alternates also count) and no haxcms_form_id/token keys.
+#   Writes ONLY title (HTML-tag-stripped), homePageId (must match a manifest.items[].id
+#   EXACTLY or the key is silently DELETED), settings.sw, settings.forceUpgrade + a version
+#   stamp. Response data = the FULL manifest. Gate: siteManifest -> 403.
+# * PATCH site/appearance: strict allow-lists — top {site, manifest}, site {name}, manifest
+#   {theme}, theme = the 14 manifest-metadata-theme-* keys; ANY extra key -> 400 'Invalid
+#   request'. cssVariable is normalized to --simple-colors-default-theme-<color>-7; a new
+#   element REPLACES the whole metadata.theme with the registry theme. Response data =
+#   {saved: true, appearance: {theme: true}} (NOT the manifest). Gate: themeManifest -> 403.
+# * PATCH site/seo: short wrapper keys author.{license,image,name,email,phone,location,
+#   website,website2,socialLink,socialLink2} / seo.{description,domain,logo,lang,gaID,
+#   private,canonical,pathauto,publishPagesOn}; only PRESENT keys are written; response
+#   data = the FULL manifest. Gate: seoManifest -> 403.
+# * PATCH site/editor: platform.audience 'novice'|'expert' (400 otherwise); response data =
+#   the FULL manifest. Gate: siteManifest -> 403 'Editor settings are disabled...'.
+# * PATCH site/blocks: platform.allowedBlocks null (unrestricted) | array; each tag must
+#   match /^[a-z][a-z0-9]*$/ or exist in the WC registry, else a GENERIC 400 'Invalid
+#   request'; stored deduped + sorted; response data = the FULL manifest. Gate: siteManifest.
+# * PATCH site/platform: platform.features — keys from the 21 validFeatureKeys or the legacy
+#   aliases, values STRICT JSON booleans; REPLACE semantics (features = {} then only the
+#   payload keys are stored), so callers MUST send the full merged set. Response data = the
+#   FULL manifest. Gate: siteManifest -> 403 'Platform settings are disabled...'.
+# * POST site/updateAlternativeFormats: {format?} in rss|sitemap|search|llms|service-worker
+#   (absent/null -> all); response data = {updated: true, site: {name}, format}.
+# * GET /_sites/{site}/site.json: PUBLIC static manifest, raw JSON (no {status,data}
+#   envelope) — the only complete settings view (SiteSummary has no metadata block).
+
+
+async def fetch_site_manifest(client: HaxcmsClient, site: str) -> dict[str, Any]:
+    """GET /_sites/{site}/site.json -> the raw public manifest (no envelope to unwrap)."""
+    response = await client.request("GET", f"/_sites/{quote(site, safe='')}/site.json", auth="none")
+    return unwrap_full(response)
+
+
+async def update_manifest(
+    client: HaxcmsClient, site: str, details: dict[str, Any]
+) -> dict[str, Any]:
+    """PATCH site (scoped-details path) -> the FULL manifest.
+
+    `details` must carry the `manifest` object (scoped detection requires it) with any of
+    manifest.site['manifest-title'], manifest.site['manifest-metadata-site-homePageId'],
+    manifest.seo['manifest-metadata-site-settings-sw'|'-forceUpgrade'] — and NO
+    haxcms_form_id/haxcms_form_token keys (those select the unreachable form path).
+    """
+    body = {"site": {"name": site}, **details}
+    response = await client.request(
+        "PATCH", client.site_path(site, "site"), json=body, auth="bearer+site", site=site
+    )
+    return unwrap_dict(response)
+
+
+async def update_appearance(
+    client: HaxcmsClient, site: str, theme: dict[str, Any]
+) -> dict[str, Any]:
+    """PATCH site/appearance -> {saved, appearance}.
+
+    `theme` holds ONLY manifest-metadata-theme-* keys (element, variables-image/-imageAlt/
+    -imageLink/-cssVariable/-palette/-icon, regions-header/-sidebarFirst/-sidebarSecond/
+    -contentTop/-contentBottom/-footerPrimary/-footerSecondary); any other key is a 400.
+    Region values are arrays of page ids; variables are strings ('' deletes the key).
+    """
+    body = {"site": {"name": site}, "manifest": {"theme": theme}}
+    response = await client.request(
+        "PATCH", client.site_path(site, "site/appearance"), json=body, auth="bearer+site", site=site
+    )
+    return unwrap_dict(response)
+
+
+async def update_seo(
+    client: HaxcmsClient,
+    site: str,
+    *,
+    seo: dict[str, Any] | None = None,
+    author: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """PATCH site/seo -> the FULL manifest.
+
+    `seo` / `author` use the SHORT wrapper keys (seo.description/domain/logo/lang/gaID/
+    private/canonical/pathauto/publishPagesOn; author.license/image/name/email/phone/
+    location/website/website2/socialLink/socialLink2); only present keys are written.
+    """
+    body: dict[str, Any] = {"site": {"name": site}}
+    if seo is not None:
+        body["seo"] = seo
+    if author is not None:
+        body["author"] = author
+    response = await client.request(
+        "PATCH", client.site_path(site, "site/seo"), json=body, auth="bearer+site", site=site
+    )
+    return unwrap_dict(response)
+
+
+async def update_editor(client: HaxcmsClient, site: str, audience: str) -> dict[str, Any]:
+    """PATCH site/editor -> the FULL manifest (audience: 'novice' | 'expert')."""
+    body = {"site": {"name": site}, "platform": {"audience": audience}}
+    response = await client.request(
+        "PATCH", client.site_path(site, "site/editor"), json=body, auth="bearer+site", site=site
+    )
+    return unwrap_dict(response)
+
+
+async def update_allowed_blocks(
+    client: HaxcmsClient, site: str, allowed_blocks: list[str] | None
+) -> dict[str, Any]:
+    """PATCH site/blocks -> the FULL manifest (null = unrestricted; else the tag list)."""
+    body = {"site": {"name": site}, "platform": {"allowedBlocks": allowed_blocks}}
+    response = await client.request(
+        "PATCH", client.site_path(site, "site/blocks"), json=body, auth="bearer+site", site=site
+    )
+    return unwrap_dict(response)
+
+
+async def update_platform(
+    client: HaxcmsClient, site: str, features: dict[str, bool]
+) -> dict[str, Any]:
+    """PATCH site/platform -> the FULL manifest.
+
+    REPLACE semantics upstream: `features` must be the FULL merged flag set (strict JSON
+    booleans), not just the changed keys — a partial payload wipes every unlisted flag.
+    """
+    body = {"site": {"name": site}, "platform": {"features": features}}
+    response = await client.request(
+        "PATCH", client.site_path(site, "site/platform"), json=body, auth="bearer+site", site=site
+    )
+    return unwrap_dict(response)
+
+
+async def update_alternative_formats(
+    client: HaxcmsClient, site: str, fmt: str | None = None
+) -> dict[str, Any]:
+    """POST site/updateAlternativeFormats -> {updated, site, format} (None = all formats)."""
+    body: dict[str, Any] = {"site": {"name": site}}
+    if fmt is not None:
+        body["format"] = fmt
+    response = await client.request(
+        "POST",
+        client.site_path(site, "site/updateAlternativeFormats"),
+        json=body,
+        auth="bearer+site",
+        site=site,
     )
     return unwrap_dict(response)
