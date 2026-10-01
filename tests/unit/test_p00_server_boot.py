@@ -51,20 +51,37 @@ async def test_server_lists_the_registered_tools() -> None:
     async with Client(mcp) as client:
         tools = await client.list_tools()
     by_name = {t.name: t for t in tools}
-    # Phase 1 registers the four session tools (PLAN T1.7); Phase 2 the nine site tools (T2.4).
+    # Phase 1 registers the four session tools (PLAN T1.7); Phase 2 the nine site tools
+    # (T2.4); Phase 3 the sixteen outline and page tools (T3.5) — 29 in total.
     assert sorted(by_name) == [
         "archive_site",
         "clone_site",
+        "create_page",
+        "create_pages",
         "create_site",
         "create_site_from_skeleton",
+        "delete_page",
+        "get_outline",
+        "get_page",
+        "get_page_revision",
         "get_server_info",
         "get_site",
         "get_skeleton",
+        "list_page_revisions",
+        "list_pages",
         "list_sites",
         "list_skeletons",
+        "list_tags",
         "list_themes",
         "login",
         "logout",
+        "move_page",
+        "normalize_slugs",
+        "reorder_pages",
+        "restore_page_revision",
+        "search_site",
+        "set_page_parent",
+        "update_page_details",
         "whoami",
     ]
 
@@ -109,6 +126,52 @@ async def test_site_tool_annotations() -> None:
     assert archive_ann is not None
     assert archive_ann.read_only_hint is False
     assert archive_ann.destructive_hint is True
+
+
+async def test_page_tool_annotations() -> None:
+    """Phase 3 annotation matrix (PLAN T3.5): reads, repeats-differ writes, destructive."""
+    mcp = build_server(_settings())
+    async with Client(mcp) as client:
+        tools = await client.list_tools()
+    by_name = {t.name: t for t in tools}
+
+    read_only = [
+        "get_outline",
+        "list_pages",
+        "get_page",
+        "list_page_revisions",
+        "get_page_revision",
+        "search_site",
+        "list_tags",
+    ]
+    for name in read_only:
+        tool_ann = by_name[name].annotations
+        assert tool_ann is not None, name
+        assert tool_ann.read_only_hint is True, name
+        assert tool_ann.destructive_hint is False, name
+
+    # repeating a create makes another page; repeating a move moves again -> not idempotent
+    for name in ["create_page", "create_pages", "move_page"]:
+        tool_ann = by_name[name].annotations
+        assert tool_ann is not None, name
+        assert tool_ann.read_only_hint is False, name
+        assert tool_ann.destructive_hint is False, name
+        assert tool_ann.idempotent_hint is False, name
+
+    # same arguments twice -> same end state, no loss
+    for name in ["update_page_details", "set_page_parent", "normalize_slugs"]:
+        tool_ann = by_name[name].annotations
+        assert tool_ann is not None, name
+        assert tool_ann.read_only_hint is False, name
+        assert tool_ann.destructive_hint is False, name
+        assert tool_ann.idempotent_hint is True, name
+
+    # full-manifest rewrite, page removal and history rollback -> destructive
+    for name in ["reorder_pages", "delete_page", "restore_page_revision"]:
+        tool_ann = by_name[name].annotations
+        assert tool_ann is not None, name
+        assert tool_ann.read_only_hint is False, name
+        assert tool_ann.destructive_hint is True, name
 
 
 async def test_get_server_info_payload() -> None:

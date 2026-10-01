@@ -53,6 +53,160 @@
       "type": "object"
     }
   },
+  "create_page": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Create page"
+    },
+    "description": "Create one page and return its record (read the returned `id` and `slug`).\n\nThe tutorial's \"Add > Page\" is `create_page(title=\"page\")` — a page appended under\nthe current parent. `parent` accepts an id or slug (omit for the root level); without\n`order` the page lands after its new siblings. The slug is auto-generated from the\ntitle (Pathauto); pass `slug` to pin an explicit one — that also makes it survive\nlater title changes. `content_html` seeds the body (plain HTML; data-URI images\nbecome site files), `duplicate_of` copies another page's content instead.\n`published=False` creates a draft hidden from anonymous visitors.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "content_html": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "duplicate_of": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "order": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "published": {
+          "default": true,
+          "type": "boolean"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "slug": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "type": "object"
+    }
+  },
+  "create_pages": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Create pages (bulk)"
+    },
+    "description": "Create many pages in ONE request (one git commit) — the fast path for imports.\n\n`items` is a list of page objects: `title` is required; `slug`, `parent`, `order`,\n`indent`, `content`, `description` and `metadata` are optional. Missing ids and slugs\nare generated (slug from title), so later entries can set `parent` to an earlier\nentry's id to build a tree in a single call. Returns `{count, pages}` with every\ncreated record, in input order. For a single page prefer create_page.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    }
+  },
   "create_site": {
     "annotations": {
       "destructive_hint": false,
@@ -161,6 +315,140 @@
       "type": "object"
     }
   },
+  "delete_page": {
+    "annotations": {
+      "destructive_hint": true,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Delete page"
+    },
+    "description": "Delete one page (DESTRUCTIVE — confirm with the user first).\n\nChild pages are NOT deleted: they re-parent to the root level and move to the end of\nthe outline. The deletion is a git commit; an administrator can restore the page from\nthe site's history, but treat this as permanent. `page` is an id or slug. Returns the\ndeleted page's record.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "type": "object"
+    }
+  },
+  "get_outline": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Get outline"
+    },
+    "description": "Get the site's full page outline as a tree (unpublished pages included).\n\n`site` defaults to the configured Default Site. Each node is `{item, children}` where\n`item` carries `id`, `title`, `slug`, `parent`, `indent`, `order`, `published`, `tags`\nand `metadata`. This is the map of the site: use the ids and slugs from it for every\nother page tool. Returns `{site, count, outline}`.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    }
+  },
+  "get_page": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Get page"
+    },
+    "description": "Get one page's record by `page` (its id or slug — nested slugs like `unit-1/lesson-1`\nwork).\n\n`include_content=True` adds the page's HTML body; details-only calls stay small.\nA miss fails with NOT_FOUND and suggests the nearest slugs. Page content is authored\nwith the Phase 4 block tools; this read is the entry point to a page's identity,\nmetadata and links.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "include_content": {
+          "default": false,
+          "type": "boolean"
+        },
+        "page": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "type": "object"
+    }
+  },
+  "get_page_revision": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Get page revision"
+    },
+    "description": "Get one historical revision with its full page content.\n\n`revision` is the git `hash` (7-64 hex characters) from list_page_revisions —\nrevision NUMBERS are not accepted. Returns `{node_id, node_slug, node_title,\nrevision, content}`; diff `content` against get_page(include_content=True) to show\nwhat changed before restoring.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "revision"
+      ],
+      "type": "object"
+    }
+  },
   "get_server_info": {
     "annotations": {
       "destructive_hint": false,
@@ -225,6 +513,155 @@
       "type": "object"
     }
   },
+  "list_page_revisions": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "List page revisions"
+    },
+    "description": "List a page's git-backed revisions, newest first.\n\nEvery save (details, content, outline) is a commit. Each entry carries\n`revision_number`, `hash` (the value get_page_revision / restore_page_revision\nexpect), `short_hash`, `author`, `timestamp`, `date` and the commit `message`.\nReturns `{node_id, node_slug, node_title, count, total, page, revisions}`.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "default": 25,
+          "type": "integer"
+        },
+        "offset": {
+          "default": 0,
+          "type": "integer"
+        },
+        "page": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "type": "object"
+    }
+  },
+  "list_pages": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "List pages"
+    },
+    "description": "List pages with optional filters, flat (use get_outline for the tree).\n\nAll filters combine: `parent` (direct children of this page id), `ancestor` with\noptional `depth` (a subtree; `depth` needs `ancestor`), `tags` (match ANY tag),\n`published`, `page_type` (e.g. `lesson`, `course`). `include_content=True` embeds\neach page's HTML body — leave it off for long lists. Paginated: returns\n`{count, total, page, items}`; `limit` caps at 200, page further with `offset`.\nUnpublished pages are included unless `published` filters them out.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "ancestor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "depth": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "include_content": {
+          "default": false,
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 100,
+          "type": "integer"
+        },
+        "offset": {
+          "default": 0,
+          "type": "integer"
+        },
+        "page_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "published": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    }
+  },
   "list_sites": {
     "annotations": {
       "destructive_hint": false,
@@ -252,6 +689,33 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {},
+      "type": "object"
+    }
+  },
+  "list_tags": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "List tags"
+    },
+    "description": "List the site's tags with page frequencies, most used first.\n\nReturns `{count, total, page, tags: [{tag, count}]}` — the vocabulary for\nlist_pages(tags=...) and search_site(tags=...).",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
       "type": "object"
     }
   },
@@ -308,6 +772,475 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {},
+      "type": "object"
+    }
+  },
+  "move_page": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Move page"
+    },
+    "description": "Move one page a single step within the outline.\n\n`direction` is `up`/`down` (swap order with the adjacent sibling) or `indent`\n(nest under the previous sibling) / `outdent` (lift to the grandparent, right after\nthe parent) — the same four moves as the outline editor's arrow buttons. `page` is an\nid or slug. Calling twice moves two steps. Returns the moved page's record.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "type": "string"
+        },
+        "page": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "direction"
+      ],
+      "type": "object"
+    }
+  },
+  "normalize_slugs": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Normalize slugs"
+    },
+    "description": "Regenerate every page slug from its title, following the site's Pathauto pattern.\n\nUse after bulk title edits when slugs have drifted. Pages with an explicit slug\noverride (`setSlug` / `update_page_details(slug=...)`) are skipped. `preview=True`\nreturns the planned changes WITHOUT writing anything — prefer it first on large\nsites. Returns `{changed, preview, changes: [{id, title, oldSlug, newSlug}],\nskipped: [...]}`.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "preview": {
+          "default": false,
+          "type": "boolean"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    }
+  },
+  "reorder_pages": {
+    "annotations": {
+      "destructive_hint": true,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Reorder pages"
+    },
+    "description": "Reorder the children of one parent (DESTRUCTIVE — rewrites the whole outline).\n\n`ordered_ids` must list EVERY current child of `parent` exactly once, in the desired\norder — call get_outline first. `parent` is an id or slug; omit it to reorder the\nroot level. Pages are not deleted by reordering, but the save rewrites the complete\nmanifest (one git commit). Returns the fresh outline tree.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "ordered_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "ordered_ids"
+      ],
+      "type": "object"
+    }
+  },
+  "restore_page_revision": {
+    "annotations": {
+      "destructive_hint": true,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Restore page revision"
+    },
+    "description": "Restore a page to a historical revision (DESTRUCTIVE — confirm with the user first).\n\nThe restore itself lands as a NEW commit, so nothing is lost and it can be undone by\nrestoring a later revision. Restores the revision's content AND the details stored\nwith it (title, description, published, locked, image). `revision` is the git `hash`\nfrom list_page_revisions. Returns `{node_id, node_slug, node_title,\nrestored_from_hash, ...}`.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "revision"
+      ],
+      "type": "object"
+    }
+  },
+  "search_site": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Search site"
+    },
+    "description": "Full-text search across the site's pages, best match first.\n\n`q` is a case-insensitive substring query (max 256 characters) matched against\ntitle, slug, description, tags and content by default — narrow with `fields`\n(e.g. `[\"title\"]`; `id` and `location` are also allowed). Filters (`parent`, `tags`,\n`published`, `page_type`) work like list_pages. Results carry `{id, title, slug,\nscore, snippet, matches}`; `sort` defaults to `-score`. Paginated `{count, total,\npage, results}`.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "limit": {
+          "default": 25,
+          "type": "integer"
+        },
+        "offset": {
+          "default": 0,
+          "type": "integer"
+        },
+        "page_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "published": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "q": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sort": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "q"
+      ],
+      "type": "object"
+    }
+  },
+  "set_page_parent": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Set page parent"
+    },
+    "description": "Reparent a page: move it under a new `parent`, or to the root level when omitted.\n\n`page` and `parent` are ids or slugs. Without `order` the page is APPENDED after its\nnew siblings; pass `order` to place it at an exact position among them. Descendant\npages move with the page. Returns the moved page's record.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "order": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "type": "object"
+    }
+  },
+  "update_page_details": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Update page details"
+    },
+    "description": "Update page-details fields; pass only the ones to change. Returns the final record.\n\nThis is the page \"details\" panel: the tutorial's rename (\"page details → Title\") is\n`update_page_details(page, title=\"...\")`. Renaming regenerates the slug under\nPathauto unless the page has an explicit slug override. `slug` pins an explicit slug\n(applied last, so a title change in the same call cannot overwrite it);\n`published=False` hides the page from anonymous visitors; `locked=True` blocks\ncontent edits; `hide_in_menu` removes it from navigation without unpublishing;\n`tags` REPLACES the tag list; `related_pages` takes page ids.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "hide_in_menu": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "icon": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "locked": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "published": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "related_pages": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "slug": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page"
+      ],
       "type": "object"
     }
   },
