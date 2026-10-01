@@ -3769,6 +3769,100 @@
       "type": "object"
     }
   },
+  "create_site_from_document": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Create site from document"
+    },
+    "description": "Create a NEW site whose whole outline comes from a document import.\n\n`name` is the machine name (lowercase letters, digits, - and _). `source` is a\npath / URL / data: / base64: document — supported kinds: .docx (Word), .pptx\n(PowerPoint), .html/.htm, .xlsx (Excel), .pdf. The document is imported with\nmethod=site (two-level outline from the highest heading level); embedded images\nare materialized as site files during creation. `theme` must exist in the live\nregistry (list_themes). `license` is a Creative Commons identifier (default\nby-sa). Returns the created site's detail record — read its `name`: on a\nduplicate request the server silently creates `<name>-1`.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "default": "",
+          "type": "string"
+        },
+        "license": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "theme": {
+          "default": "clean-one",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  "create_site_from_platform": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Create site from platform"
+    },
+    "description": "Create a NEW site from a remote platform export the SERVER fetches.\n\n`platform` is one of: haxcms, html, pressbooks, gitbook, notion, wordpress,\nelmsln, drupal-book, plone, openstax, vitepress. `url` is the export's public URL\n(repoUrl) — the HAXcms server downloads it, so it must be publicly reachable: the\nserver's SSRF guard refuses loopback, private, link-local and metadata addresses\n(INVALID_ARGUMENT). For LOCAL HTML use create_site_from_document with the .html\nfile instead. Remote platforms may bring asset download maps which the server\napplies during creation. `theme` must exist in the live registry; `license`\ndefaults to the import's own license, else by-sa. Returns the created site's\ndetail record (read its `name` — duplicates become `<name>-1`).",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "default": "",
+          "type": "string"
+        },
+        "license": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name": {
+          "type": "string"
+        },
+        "platform": {
+          "type": "string"
+        },
+        "theme": {
+          "default": "clean-one",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "platform",
+        "url"
+      ],
+      "type": "object"
+    }
+  },
   "create_site_from_skeleton": {
     "annotations": {
       "destructive_hint": false,
@@ -4236,6 +4330,58 @@
       },
       "required": [
         "skeleton"
+      ],
+      "type": "object"
+    }
+  },
+  "import_document": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Import document into site"
+    },
+    "description": "Import a document into an EXISTING site, creating its pages in bulk.\n\n`source` is a path / URL / data: / base64: document — supported kinds: .docx\n(Word), .pptx (PowerPoint), .html/.htm, .xlsx (Excel), .pdf. The kind is detected\nfrom the filename extension (or mimetype). `method` shapes the result: `site`\nbuilds a two-level outline from the document's highest heading level (children\nonly below H4), `branch` creates FLAT pages from the top-level headings, `page`\nwraps everything into ONE page. `parent` (page id or slug) attaches the imported\npages under an existing page. `content_type` (`course` or `portfolio`) only picks\nthe placeholder content for headings with no body. Returns the created pages\n(re-fetched, in outline order) plus `skipped` and `warnings`. NOT idempotent:\nimporting twice duplicates the pages.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "content_type": {
+          "default": "",
+          "type": "string"
+        },
+        "method": {
+          "default": "site",
+          "type": "string"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
       ],
       "type": "object"
     }

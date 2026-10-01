@@ -129,6 +129,15 @@ def error_from_response(response: httpx.Response) -> HaxcmsMcpError:
             details=details,
         )
 
+    if status == 422:
+        # PLAN T7.3: some remote platform converters (openstax, plone) answer 422;
+        # it is always an input problem the Agent can act on.
+        return HaxcmsMcpError(
+            ErrorCode.INVALID_ARGUMENT,
+            message or "unprocessable request",
+            details=details,
+        )
+
     if status == 405:
         return HaxcmsMcpError(
             ErrorCode.UNSUPPORTED,

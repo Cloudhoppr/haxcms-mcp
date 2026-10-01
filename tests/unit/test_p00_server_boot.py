@@ -54,7 +54,8 @@ async def test_server_lists_the_registered_tools() -> None:
     # Phase 1 registers the four session tools (PLAN T1.7); Phase 2 the nine site tools
     # (T2.4); Phase 3 the sixteen outline and page tools (T3.5); Phase 4 the twelve
     # content tools and the 37 typed block tools (T4.5); Phase 5 the eight files tools
-    # (T5.6); Phase 6 the eleven settings tools (T6.4) — 97 in total.
+    # (T5.6); Phase 6 the eleven settings tools (T6.4); Phase 7 the three import tools
+    # (T7.5) — 100 in total.
     assert sorted(by_name) == [
         "add_accent_card",
         "add_audio",
@@ -102,6 +103,8 @@ async def test_server_lists_the_registered_tools() -> None:
         "create_page",
         "create_pages",
         "create_site",
+        "create_site_from_document",
+        "create_site_from_platform",
         "create_site_from_skeleton",
         "delete_file",
         "delete_page",
@@ -117,6 +120,7 @@ async def test_server_lists_the_registered_tools() -> None:
         "get_site",
         "get_site_settings",
         "get_skeleton",
+        "import_document",
         "list_blocks",
         "list_files",
         "list_page_revisions",
