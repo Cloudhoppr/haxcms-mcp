@@ -18,6 +18,7 @@ last h2" lands it after the other one).
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Callable
 from typing import Any
@@ -98,6 +99,58 @@ def _validate_placement(placement: str, anchor: str | None) -> str:
             hint="use after/before to position relative to an anchored block",
         )
     return placement
+
+
+def build_block_html(
+    tag: str, attributes: dict[str, Any] | None = None, inner_html: str = ""
+) -> str:
+    """Build `<tag attr="...">inner_html</tag>` for the generic and typed tools.
+
+    Attribute values: `True` → the HAX flag form (`name="name"`), `False`/`None` →
+    omitted, dict/list → JSON, everything else → `str(value)`; escaping happens through
+    the parse + serialize round trip. `inner_html` is parsed as HTML (slotted children,
+    inline markup). A nested `<page-break>` is rejected: it would forge a second segment
+    boundary inside the saved body (the envelope is managed by `save_content` alone).
+    """
+    name = (tag or "").strip().lower()
+    if not _ATTR_NAME_RE.match(name):
+        raise HaxcmsMcpError(
+            ErrorCode.INVALID_ARGUMENT,
+            f"invalid block tag {tag!r}",
+            hint="tags are XML names, e.g. p, h2, media-image",
+        )
+    parsed = strip_envelopes(parse_body(f"<{name}>{inner_html or ''}</{name}>"))
+    if not parsed:
+        raise HaxcmsMcpError(
+            ErrorCode.INVALID_ARGUMENT,
+            f"could not build a block for tag {tag!r}",
+            hint="inner_html must be HTML content, not an envelope",
+        )
+    element = parsed[0]
+    for descendant in element.iter():
+        if descendant.tag == "page-break":
+            raise HaxcmsMcpError(
+                ErrorCode.INVALID_ARGUMENT,
+                "page-break cannot appear inside a block",
+                hint="the page-break envelope is managed automatically; pass plain content",
+            )
+    for attribute_name, value in (attributes or {}).items():
+        if not _ATTR_NAME_RE.match(attribute_name):
+            raise HaxcmsMcpError(
+                ErrorCode.INVALID_ARGUMENT,
+                f"invalid attribute name {attribute_name!r}",
+                hint="attribute names are XML names: letters, digits, -, _, ., : — "
+                "no spaces, quotes or =",
+            )
+        if value is True:
+            element.set(attribute_name, attribute_name)  # HAX boolean flag form
+        elif value is False or value is None:
+            continue
+        elif isinstance(value, dict | list):
+            element.set(attribute_name, json.dumps(value, ensure_ascii=False))
+        else:
+            element.set(attribute_name, str(value))
+    return serialize_elements([element])
 
 
 def _resolve_index(

@@ -1,4 +1,142 @@
 {
+  "add_block": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add block"
+    },
+    "description": "Add one block (any catalog tag or native HTML element) and save the page.\n\n`tag` is validated against the Block Catalog (list_blocks / get_block_schema):\nunknown tags and attribute names fail with suggestions BEFORE anything is\nfetched or saved. `attributes` maps attribute name → value (pass `{}` for\nnone): `true` becomes the HAX flag form (`card=\"card\"`), `false`/`null` are\nomitted, lists/dicts become JSON.\n`inner_html` carries children — slotted content like\n`<p slot=\"question\">...</p>` or inline markup. Placement: `append`/`prepend`\n(page level, NO anchor) or `after`/`before` (REQUIRE an anchor addressing the\nreference block; `occurrence` picks among matches). Typed tools (add_image,\nadd_self_check, add_paragraph, ...) are the friendlier path for Core Blocks;\nthis generic tool covers everything else. Returns `{site, page_id, page_slug,\noperation, affected, block_count, saved}` — one git revision per call.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "attributes": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "inner_html": {
+          "default": "",
+          "type": "string"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tag": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "tag",
+        "attributes"
+      ],
+      "type": "object"
+    }
+  },
+  "add_link": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add link"
+    },
+    "description": "Wrap text INSIDE the anchored block in `<a href>` (e.g. linking \"Watch it\nhere.\" within a paragraph).\n\n`anchor` addresses the containing block; `text` is the exact, CASE-SENSITIVE\nsnippet inside it — the first match in document order is split out and wrapped,\nsurrounding markup stays untouched. `new_tab=true` adds `target=\"_blank\"`.\nRepeating the call wraps the text again (inside the existing link), so check\nthe block first. A miss fails with the block's preview in the error details.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "type": "string"
+        },
+        "new_tab": {
+          "default": false,
+          "type": "boolean"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "anchor",
+        "text",
+        "url"
+      ],
+      "type": "object"
+    }
+  },
   "archive_site": {
     "annotations": {
       "destructive_hint": true,
@@ -348,6 +486,39 @@
       "type": "object"
     }
   },
+  "get_block_schema": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Get block schema"
+    },
+    "description": "Get one catalog entry: attributes (`name`, `type`, `required`, `description`,\n`enum`), `slots`, `example_html` and `agent_notes`.\n\nThe reference for add_block and the typed block tools. With a site addressed\n(argument or HAXCMS_MCP_DEFAULT_SITE) the entry is merged with the server's\nlive schema for that tag (cached 10 minutes); live failures degrade silently\nto the bundled entry. Unknown tags fail with the closest matches; tags the\nserver's wc-registry knows but the catalog does not resolve through the live\nregistry (category `embed`).",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tag": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "tag"
+      ],
+      "type": "object"
+    }
+  },
   "get_outline": {
     "annotations": {
       "destructive_hint": false,
@@ -391,6 +562,72 @@
           "default": false,
           "type": "boolean"
         },
+        "page": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "type": "object"
+    }
+  },
+  "get_page_blocks": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Get page blocks"
+    },
+    "description": "List a page's top-level blocks: `{count, blocks}` with index/tag/attributes/\ntext/preview per block.\n\nThe cheap orientation read before any anchored operation: pick the `anchor`\n(a text substring or tag selector) and `occurrence` from what you see here.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "type": "object"
+    }
+  },
+  "get_page_content": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Get page content"
+    },
+    "description": "Read a page's stored body: `{item, html, blocks}`.\n\n`html` is the raw stored body (no `<page-break>` envelope — that is managed\nautomatically); `blocks` is the parsed top-level block list with `index`, `tag`,\n`attributes`, `text` and `preview` — the vocabulary for anchors. `page` is an id\nor slug (nested slugs like `unit-1/lesson-1` work). Use get_page_blocks for the\ncompact index without the full HTML.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
         "page": {
           "type": "string"
         },
@@ -510,6 +747,21 @@
       "required": [
         "skeleton"
       ],
+      "type": "object"
+    }
+  },
+  "list_blocks": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "List blocks"
+    },
+    "description": "List the Block Catalog: `{count, blocks}` with `{tag, title, description,\ncategory}` per entry.\n\nThe 31 bundled HAX Core Blocks (categories: text, media, layout, assessment,\neducation, reference, embed) plus native HTML available through add_block\n(`p`, `h1`-`h6`, `ul`/`ol`/`li`, `table`, `blockquote`, `hr`, `a`, ...).\nCall get_block_schema(tag) for an entry's attributes, slots and example HTML.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {},
       "type": "object"
     }
   },
@@ -775,6 +1027,86 @@
       "type": "object"
     }
   },
+  "move_block": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Move block"
+    },
+    "description": "Move the anchored block elsewhere on the same page.\n\n`placement`: `append`/`prepend` move to the page end/start (no\n`target_anchor`); `after`/`before` position relative to `target_anchor`.\nThe target is resolved AFTER the source is lifted out, so target anchors\naddress the page as it looks at insertion time (moving the first of two `h2`s\n\"after the last h2\" lands it after the other one). The source must not match\nits own target anchor.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "type": "string"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "target_anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "target_occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "anchor"
+      ],
+      "type": "object"
+    }
+  },
   "move_page": {
     "annotations": {
       "destructive_hint": false,
@@ -843,6 +1175,57 @@
       "type": "object"
     }
   },
+  "remove_block": {
+    "annotations": {
+      "destructive_hint": true,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Remove block"
+    },
+    "description": "Delete the anchored block (DESTRUCTIVE — confirm with the user first).\n\nThe media schema is recomputed, so removing the last `<media-image>` also\nclears it from the page's metadata. `affected` reports the removed block at its\nOLD index. An administrator can restore it from the page's revision history.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "type": "string"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "anchor"
+      ],
+      "type": "object"
+    }
+  },
   "reorder_pages": {
     "annotations": {
       "destructive_hint": true,
@@ -886,6 +1269,61 @@
       },
       "required": [
         "ordered_ids"
+      ],
+      "type": "object"
+    }
+  },
+  "replace_block": {
+    "annotations": {
+      "destructive_hint": true,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Replace block"
+    },
+    "description": "Replace the anchored block with new HTML (DESTRUCTIVE for that block).\n\n`html` may contain several top-level elements — they all take the anchored\nblock's place (the tutorial's paragraph → heading conversion is\n`replace_block(page, anchor=\"The First Secret\", html='<h2>The First Secret is\nNoticing</h2>')`). The replacement is NOT catalog-validated (raw HTML escape\nhatch); prefer remove + add_block for validated rebuilds. Returns the standard\nblock-operation result with the new blocks in `affected`.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "type": "string"
+        },
+        "html": {
+          "type": "string"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "anchor",
+        "html"
       ],
       "type": "object"
     }
@@ -1040,6 +1478,98 @@
       "type": "object"
     }
   },
+  "set_block_text": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Set block text"
+    },
+    "description": "Replace the anchored block's text; its tag and attributes are kept.\n\nMarkup in `text` is escaped, not parsed — for rich content use replace_block.\nFor slotted blocks (self-check, grid-plate, ...) only the DEFAULT slot content\nis replaced; children carrying a `slot` attribute survive. Empty `text` clears\nthe text.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "type": "string"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "anchor",
+        "text"
+      ],
+      "type": "object"
+    }
+  },
+  "set_page_content": {
+    "annotations": {
+      "destructive_hint": true,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Set page content"
+    },
+    "description": "Replace a page's ENTIRE body (DESTRUCTIVE — read get_page_content first).\n\n`html` is the new body as top-level elements (`<p>`, `<h2>`, `<media-image>`,\n...); any `<page-break>` tags in it are stripped — the envelope is rebuilt from\nthe page's current record, so title, published flag and other details survive.\nThe media schema (metadata.images/videos) is recomputed from the new body. One\ngit revision is committed; restore_page_revision can undo. Returns the fresh\n`{item, html, blocks}`. For targeted changes prefer the block tools (add_block,\nreplace_block, update_block, ...).",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "html": {
+          "type": "string"
+        },
+        "page": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "html"
+      ],
+      "type": "object"
+    }
+  },
   "set_page_parent": {
     "annotations": {
       "destructive_hint": false,
@@ -1091,6 +1621,83 @@
       },
       "required": [
         "page"
+      ],
+      "type": "object"
+    }
+  },
+  "update_block": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Update block attributes"
+    },
+    "description": "Set and/or remove attributes on the anchored block; tag, text and children stay.\n\n`set` maps attribute → value (values are stringified; HAX boolean flags want\ntheir own name as the value: `{\"card\": \"card\"}` — stored bodies use that form);\n`unset` lists attribute names to remove (absent names are a silent no-op).\nNames are validated as XML names; for catalog-level checks call\nget_block_schema first. The tutorial's \"set image source, alt, caption\" step is\none update_block with all of them in `set`. At least one of `set`/`unset` is\nrequired.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "type": "string"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "set": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "unset": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "anchor"
       ],
       "type": "object"
     }
