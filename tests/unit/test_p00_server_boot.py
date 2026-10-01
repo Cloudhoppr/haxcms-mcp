@@ -55,7 +55,8 @@ async def test_server_lists_the_registered_tools() -> None:
     # (T2.4); Phase 3 the sixteen outline and page tools (T3.5); Phase 4 the twelve
     # content tools and the 37 typed block tools (T4.5); Phase 5 the eight files tools
     # (T5.6); Phase 6 the eleven settings tools (T6.4); Phase 7 the three import tools
-    # and the twelve generated converters (T7.4/T7.5) — 112 in total.
+    # and the twelve generated converters (T7.4/T7.5); Phase 8 the five export tools
+    # (T8.4) — 117 in total.
     assert sorted(by_name) == [
         "add_accent_card",
         "add_audio",
@@ -120,7 +121,11 @@ async def test_server_lists_the_registered_tools() -> None:
         "create_site_from_skeleton",
         "delete_file",
         "delete_page",
+        "download_site_skeleton",
+        "download_site_zip",
         "duplicate_file",
+        "export_page",
+        "export_site",
         "get_block_schema",
         "get_file",
         "get_outline",
@@ -152,6 +157,7 @@ async def test_server_lists_the_registered_tools() -> None:
         "reorder_pages",
         "replace_block",
         "restore_page_revision",
+        "save_site_as_template",
         "search_site",
         "set_allowed_blocks",
         "set_block_text",
@@ -401,6 +407,28 @@ async def test_converter_tool_annotations() -> None:
         assert ann.read_only_hint is True, tool.name
         assert ann.destructive_hint is False, tool.name
         assert ann.idempotent_hint is True, tool.name
+
+
+async def test_export_tool_annotations() -> None:
+    """Phase 8 annotation matrix (PLAN T8.4): exports are read-only-hint FALSE (they
+    produce Output Directory files; save-as-template writes server-side) but never
+    destructive, and repeats are safe (collisions take a new -<n> filename slot)."""
+    mcp = build_server(_settings())
+    async with Client(mcp) as client:
+        tools = await client.list_tools()
+    by_name = {t.name: t for t in tools}
+    for name in [
+        "export_site",
+        "export_page",
+        "download_site_zip",
+        "save_site_as_template",
+        "download_site_skeleton",
+    ]:
+        ann = by_name[name].annotations
+        assert ann is not None, name
+        assert ann.read_only_hint is False, name
+        assert ann.destructive_hint is False, name
+        assert ann.idempotent_hint is True, name
 
 
 async def test_converter_tool_schemas_hide_bound_params() -> None:

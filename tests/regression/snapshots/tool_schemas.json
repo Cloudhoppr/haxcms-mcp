@@ -4318,6 +4318,60 @@
       "type": "object"
     }
   },
+  "download_site_skeleton": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Download site skeleton"
+    },
+    "description": "Download the site's skeleton JSON into the Output Directory.\n\nThe skeleton is the site as a reusable template document: `{meta, site, build\n{items: [{id, title, slug, order, parent, indent, content, metadata}]}, theme}`\n— every page's CONTENT is inline. Same artifact as `export_site(format=\n\"skeleton\")` without going through the descriptor route. `site` defaults to\nthe configured Default Site. Returns `{site, format: \"skeleton\", path, bytes,\nmimetype, created_at}`.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    }
+  },
+  "download_site_zip": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Download site zip"
+    },
+    "description": "Download the whole site as a .zip archive into the Output Directory.\n\nConvenience alias for `export_site(format=\"zip\")`, kept for discoverability.\nThe archive holds the site folder as stored on the server (pages, files,\nsite.json settings; node_modules and .git excluded). `site` defaults to the\nconfigured Default Site. Returns `{site, format: \"zip\", path, bytes, mimetype,\ncreated_at}`.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    }
+  },
   "duplicate_file": {
     "annotations": {
       "destructive_hint": false,
@@ -4348,6 +4402,74 @@
       "required": [
         "uuid"
       ],
+      "type": "object"
+    }
+  },
+  "export_page": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Export page"
+    },
+    "description": "Export ONE page into the Output Directory and return the file record.\n\n`page` is a page id or slug (nested slugs like `unit-one/lesson-one` work).\n`format`: `md` (markdown), `html`, `json` / `yaml` / `xml` (the page record —\nmetadata plus content — serialized), and `pdf` / `docx` / `epub` (document\nconversions; `pdf` needs Chrome on the HAXcms server, else UNSUPPORTED).\n`site` defaults to the configured Default Site. Returns\n`{site, page_id, format, path, bytes, mimetype, created_at}`.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "default": "md",
+          "type": "string"
+        },
+        "page": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "type": "object"
+    }
+  },
+  "export_site": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Export site"
+    },
+    "description": "Export a whole site into the Output Directory and return the file record.\n\n`format`: `zip` (the full site folder as an archive — pages, files, settings),\n`markdown` (every page concatenated into ONE .md, outline order), `skeleton`\n(the reusable HAX skeleton JSON: outline + all page content inline), `html`\n(single-file rendering), and `pdf`/`docx`/`epub` (document conversions — these\nneed Chrome on the HAXcms server; without it the call fails as UNSUPPORTED with\na hint). `site` defaults to the configured Default Site. Returns\n`{site, format, path, bytes, mimetype, created_at}` — `path` is a file on the\nMCP SERVER host, not a URL and not the bytes.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "default": "zip",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
       "type": "object"
     }
   },
@@ -5482,6 +5604,33 @@
         "page",
         "revision"
       ],
+      "type": "object"
+    }
+  },
+  "save_site_as_template": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Save site as template"
+    },
+    "description": "Save the site SERVER-SIDE as a reusable skeleton template.\n\nGenerates the site's skeleton (outline + page content) and stores it in the\nserver's user skeleton directory — nothing is written to the Output Directory.\nThe template immediately shows up in `list_skeletons` and can seed new sites\nvia `create_site_from_skeleton`. `site` defaults to the configured Default\nSite. Returns `{saved, name, filename, path, link}` (`path` is the SERVER's\nfilesystem path; `link` is its skeletons API route). Re-running overwrites the\nsame template file.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
       "type": "object"
     }
   },
