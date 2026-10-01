@@ -54,7 +54,7 @@ async def test_server_lists_the_registered_tools() -> None:
     # Phase 1 registers the four session tools (PLAN T1.7); Phase 2 the nine site tools
     # (T2.4); Phase 3 the sixteen outline and page tools (T3.5); Phase 4 the twelve
     # content tools and the 37 typed block tools (T4.5); Phase 5 the eight files tools
-    # (T5.6); Phase 6 so far the git-publishing tool (T6.6) — 87 in total.
+    # (T5.6); Phase 6 the eleven settings tools (T6.4) — 97 in total.
     assert sorted(by_name) == [
         "add_accent_card",
         "add_audio",
@@ -115,6 +115,7 @@ async def test_server_lists_the_registered_tools() -> None:
         "get_page_revision",
         "get_server_info",
         "get_site",
+        "get_site_settings",
         "get_skeleton",
         "list_blocks",
         "list_files",
@@ -129,18 +130,27 @@ async def test_server_lists_the_registered_tools() -> None:
         "move_block",
         "move_page",
         "normalize_slugs",
+        "regenerate_alternate_formats",
         "remove_block",
         "rename_file",
         "reorder_pages",
         "replace_block",
         "restore_page_revision",
         "search_site",
+        "set_allowed_blocks",
         "set_block_text",
+        "set_editor_audience",
         "set_page_content",
         "set_page_parent",
+        "set_platform_features",
+        "set_site_theme",
+        "set_theme_regions",
         "transform_file",
+        "update_author_info",
         "update_block",
         "update_page_details",
+        "update_seo_settings",
+        "update_site_info",
         "upload_file",
         "whoami",
     ]
@@ -326,6 +336,53 @@ async def test_files_tool_annotations() -> None:
     assert delete_ann is not None
     assert delete_ann.read_only_hint is False
     assert delete_ann.destructive_hint is True
+
+
+async def test_settings_tool_annotations() -> None:
+    """Phase 6 annotation matrix (PLAN T6.4): one read, converging idempotent writes."""
+    mcp = build_server(_settings())
+    async with Client(mcp) as client:
+        tools = await client.list_tools()
+    by_name = {t.name: t for t in tools}
+
+    read_ann = by_name["get_site_settings"].annotations
+    assert read_ann is not None
+    assert read_ann.read_only_hint is True
+    assert read_ann.destructive_hint is False
+
+    # every settings write converges to the same end state when repeated -> idempotent
+    idempotent_writes = [
+        "update_site_info",
+        "update_author_info",
+        "set_site_theme",
+        "set_theme_regions",
+        "update_seo_settings",
+        "set_editor_audience",
+        "set_allowed_blocks",
+        "set_platform_features",
+        "configure_site_git",
+        "regenerate_alternate_formats",
+    ]
+    for name in idempotent_writes:
+        tool_ann = by_name[name].annotations
+        assert tool_ann is not None, name
+        assert tool_ann.read_only_hint is False, name
+        assert tool_ann.destructive_hint is False, name
+        assert tool_ann.idempotent_hint is True, name
+
+
+async def test_configure_site_git_tool_raises_unsupported() -> None:
+    """The git tool fails UNSUPPORTED before any network use (no route persists git)."""
+    mcp = build_server(_settings())
+    async with Client(mcp) as client:
+        with pytest.raises(ToolError) as excinfo:
+            await client.call_tool(
+                "configure_site_git", {"site": "demo", "branch": "gh-pages", "auto_push": True}
+            )
+    text = str(excinfo.value)
+    assert "[UNSUPPORTED]" in text
+    assert "git publishing settings" in text
+    assert "site.json" in text
 
 
 async def test_get_server_info_payload() -> None:

@@ -4191,6 +4191,33 @@
       "type": "object"
     }
   },
+  "get_site_settings": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Get site settings"
+    },
+    "description": "Read the site's full settings view (parsed from the public site.json manifest).\n\nReturns: identity (`id`, `name`, `title`, `description`, `license`, `domain`,\n`tags`, `logo`, `home_page_id`, `updated`), `sw`/`force_upgrade`, the `theme`\nblock (`element`, `css_variable`, `palette`, `icon`, banner image fields, raw\n`regions`), the `seo` block (`lang`, `ga_id`, `private`, `canonical`, `pathauto`,\n`publish_pages_on`), the `author` block, the `platform` block (`audience`,\n`allowed_blocks` — null means unrestricted — and the 21 `features` flags), and\nthe read-only `git` block (`vendor`, `branch`, `auto_push`, `url`). Unknown\nupstream keys are preserved as extras on each block; `warnings` collects anything\nnoteworthy. This is the ONLY complete settings read — use it before and after\nany settings change.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    }
+  },
   "get_skeleton": {
     "annotations": {
       "destructive_hint": false,
@@ -4706,6 +4733,44 @@
       "type": "object"
     }
   },
+  "regenerate_alternate_formats": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Regenerate alternate formats"
+    },
+    "description": "Rebuild the site's alternative-format files; returns {updated, site, format}.\n\n`format` is one of: rss, sitemap, search, llms, service-worker — omit it (null)\nto regenerate ALL of them. These files are normally rebuilt automatically on\npublish; this forces a rebuild (e.g. after editing files behind HAXcms's back).\nNot gated by a feature flag.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    }
+  },
   "remove_block": {
     "annotations": {
       "destructive_hint": true,
@@ -5046,6 +5111,47 @@
       "type": "object"
     }
   },
+  "set_allowed_blocks": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Set allowed blocks"
+    },
+    "description": "Restrict which blocks the editor offers; returns the fresh settings view.\n\n`tags` is the FULL allow-list (e.g. [\"image\", \"a11y-gif-player\", \"markdown\"]) —\nstored deduped. `tags=null` (omit it) removes the restriction entirely. Dashed\ntags are pre-validated against the instance's web-component registry (an unknown\ntag fails INVALID_ARGUMENT naming it); plain HTML tags (video, img, hr...) pass.\nAn empty list is rejected. Gated by the siteManifest feature flag.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    }
+  },
   "set_block_text": {
     "annotations": {
       "destructive_hint": false,
@@ -5097,6 +5203,39 @@
         "page",
         "anchor",
         "text"
+      ],
+      "type": "object"
+    }
+  },
+  "set_editor_audience": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Set editor audience"
+    },
+    "description": "Set the editor audience: `novice` (simplified editor UI) or `expert` (full).\n\nStored on metadata.platform.audience. Returns the fresh settings view. Gated by\nthe siteManifest feature flag.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "audience": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "audience"
       ],
       "type": "object"
     }
@@ -5193,6 +5332,181 @@
       "type": "object"
     }
   },
+  "set_platform_features": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Set platform features"
+    },
+    "description": "Toggle platform feature flags; returns the fresh settings view (check `warnings`).\n\n`features` maps canonical camelCase keys to booleans — e.g. {\"deletePage\": false}.\nValid keys: addPage, saveAndEdit, deletePage, outlineDesigner, styleGuide,\ninsights, siteManifest, themeManifest, authorManifest, seoManifest, pageBreak,\naddBlock, popularGizmos, recentGizmos, contentMap, viewSource, uploadMedia,\nonlineMedia, community, pageTemplates, blockTemplates. Only the flags you pass\nchange (the service merges over the current set). A disabled flag makes the\nmatching tools fail FEATURE_DISABLED (deletePage -> delete_page, uploadMedia ->\nupload_file, seoManifest -> the SEO tools...). WARNING: siteManifest=false also\nlocks the manifest/editor/blocks/platform routes themselves and CANNOT be undone\nthrough the API — the Operator must edit site.json on the server to recover.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "features": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "type": "object"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "features"
+      ],
+      "type": "object"
+    }
+  },
+  "set_site_theme": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Set site theme"
+    },
+    "description": "Switch the theme element and set appearance variables in ONE call.\n\n`theme` must exist in the live registry (list_themes; hidden themes work with a\nwarning). WARNING: changing the element REPLACES the whole theme block with the\nregistry theme's defaults — palette, accent_color, icon, banner and REGION\nassignments reset — so pass everything you want to keep in the SAME call.\n`accent_color` accepts a bare simple-colors name (`deep-purple`) or the full\n`--simple-colors-default-theme-<color>-7` form; `palette` \"\" removes the palette;\n`banner_image`/`banner_alt`/`banner_link` set the banner variables. Returns the\nfresh settings view (check its `warnings`).",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "accent_color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "banner_alt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "banner_image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "banner_link": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "icon": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "theme": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "theme"
+      ],
+      "type": "object"
+    }
+  },
+  "set_theme_regions": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Set theme regions"
+    },
+    "description": "Assign pages to one theme region (menus/sidebars/footers); returns fresh settings.\n\n`region` is one of: header, sidebarFirst, sidebarSecond, contentTop, contentBottom,\nfooterPrimary, footerSecondary (exact camelCase). `page_ids` is the FULL replacement\nlist for that region — page ids or slugs (each pre-resolved; unknown pages fail\nNOT_FOUND) — and `page_ids=[]` clears the region. Other regions are untouched, but\nnote set_site_theme resets ALL regions to the registry defaults.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "page_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "region": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "region",
+        "page_ids"
+      ],
+      "type": "object"
+    }
+  },
   "transform_file": {
     "annotations": {
       "destructive_hint": false,
@@ -5249,6 +5563,121 @@
         "uuid",
         "operation"
       ],
+      "type": "object"
+    }
+  },
+  "update_author_info": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Update author info"
+    },
+    "description": "Update the author block; returns the fresh settings view.\n\nOnly the fields passed are written. `license` is a Creative Commons identifier\n(e.g. `by-sa`, `by-nc`) and lands on the TOP-LEVEL manifest license (shared with\nthe site license). `image` is a path/URL. At least one field is required.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "email": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "license": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "phone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "social_link": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "website": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
       "type": "object"
     }
   },
@@ -5475,6 +5904,228 @@
       "required": [
         "page"
       ],
+      "type": "object"
+    }
+  },
+  "update_seo_settings": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Update SEO settings"
+    },
+    "description": "Update the SEO block; returns the fresh settings view.\n\nOnly the fields passed are written; at least one is required. `lang` is a BCP-47\ncode (e.g. `en`); `ga_id` a Google Analytics property id; `private` hides the site\nfrom search; `canonical` toggles canonical URLs; `pathauto` auto-derives page slugs\nfrom titles (affects create_page/rename_page); `publish_pages_on` toggles publish\ntimestamps; `description`/`domain`/`logo` overlap with update_site_info (same\nunderlying fields). Gated by the seoManifest feature flag.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ga_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "lang": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "logo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "pathauto": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "private": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "publish_pages_on": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    }
+  },
+  "update_site_info": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Update site info"
+    },
+    "description": "Update site-info fields; returns the fresh settings view.\n\n`title` (HTML tags are stripped upstream), `description`, `domain`, `logo`\n(site-relative path or URL), and `home_page` — a page id or slug (pre-resolved;\nan unknown page fails NOT_FOUND) or \"\" to CLEAR the home-page setting. At least\none field is required. WARNING: `tags` is NOT writable through the 26.8.1 API —\npassing it fails UNSUPPORTED before any other field is applied; the Operator must\nedit `metadata.site.tags` in site.json on the server.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "home_page": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "logo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
       "type": "object"
     }
   },
