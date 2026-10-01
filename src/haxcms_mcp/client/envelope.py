@@ -1,6 +1,7 @@
 """Response envelope handling and error mapping (PLAN §2.3, API-REF §1).
 
-Every HAXcms JSON response is `{status, data}`; errors carry `data.message`. `unwrap` returns
+Every HAXcms JSON response is `{status, data}`; errors carry `data.message` — except the
+Phase 7 import/converter routes, which live-probe as `data.error`. `unwrap` returns
 `data`, `unwrap_full` keeps top-level extras (`jwt`, `link`, `id`, `slug`). Non-2xx responses map
 to `HaxcmsMcpError` with the exact upstream message preserved.
 """
@@ -38,7 +39,7 @@ _TOKEN_MESSAGE_FRAGMENTS = (
 
 
 def response_message(response: httpx.Response) -> str:
-    """Best-effort extraction of the upstream `data.message` (or raw text)."""
+    """Best-effort extraction of the upstream `data.message`/`data.error` (or raw text)."""
     try:
         body = response.json()
     except (json.JSONDecodeError, ValueError):
@@ -47,6 +48,10 @@ def response_message(response: httpx.Response) -> str:
         data = body.get("data")
         if isinstance(data, dict) and isinstance(data.get("message"), str):
             return str(data["message"])
+        # Phase 7 live probe: every import/converter 400 carries its message here
+        # (e.g. 'Unsupported import platform "foo"', "No file uploaded", SSRF refusals).
+        if isinstance(data, dict) and isinstance(data.get("error"), str):
+            return str(data["error"])
         if isinstance(data, str):
             return data
         if isinstance(body.get("message"), str):

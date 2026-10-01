@@ -3,16 +3,24 @@
 Header requirements follow the `security:` blocks in `specs/system-spec.yaml` (verified live in
 Phase 0/2): login/refresh/logout/connection-settings are open; `sites` (list/info/create/clone/
 archive), `status`, `system/version`, `session/user`, and `themes` require bearer +
-X-HAXCMS-User-Token; `skeletons` and `skeletons/{name}` require bearer only. Phase 3+ adds the
-remaining helpers.
+X-HAXCMS-User-Token; `skeletons` and `skeletons/{name}` require bearer only. Phase 7 adds the
+import routes (`actions/import-*`, `site/import/{platform}`) and the twelve converter actions —
+also bearer + user token; their errors carry `data.error` instead of `data.message`.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Final
 
 from haxcms_mcp.client import HaxcmsClient
-from haxcms_mcp.client.envelope import unwrap, unwrap_dict, unwrap_full, unwrap_list
+from haxcms_mcp.client.envelope import (
+    error_from_response,
+    unwrap,
+    unwrap_dict,
+    unwrap_full,
+    unwrap_list,
+)
+from haxcms_mcp.errors import ErrorCode, HaxcmsMcpError
 from haxcms_mcp.models.site import SiteList
 
 
@@ -131,3 +139,173 @@ async def get_skeleton(client: HaxcmsClient, name: str) -> dict[str, Any]:
     """GET skeletons/{name} -> `{meta, site, build, ...}` full skeleton detail (bearer only)."""
     response = await client.request("GET", client.sys(f"skeletons/{name}"), auth="bearer")
     return unwrap_dict(response)
+
+
+# --- Phase 7: imports and converter actions (T7.2) --------------------------------------------
+# All routes below are bearer + X-HAXCMS-User-Token per the spec security blocks (live-probed:
+# bearer-only gets the 403 "X-HAXCMS-User-Token header is required for this endpoint").
+
+IMPORT_KIND_ROUTES: Final[dict[str, str]] = {
+    kind: f"actions/import-{kind}" for kind in ("docx", "pptx", "html", "xlsx", "pdf")
+}
+
+# operationId -> path for the twelve generated converters (ADR-0002; scripts/gen_tools.py
+# derives the same table from specs/system-spec.yaml, pinned 26.8.1).
+ACTION_ROUTES: Final[dict[str, str]] = {
+    "docxToHtml": "actions/docx-to-html",
+    "htmlToDocx": "actions/html-to-docx",
+    "mdToHtml": "actions/md-to-html",
+    "htmlToMd": "actions/html-to-md",
+    "prettyHtml": "actions/pretty-html",
+    "jsonToYaml": "actions/json-to-yaml",
+    "yamlToJson": "actions/yaml-to-json",
+    "htmlToPdf": "actions/html-to-pdf",
+    "xlsxToCsv": "actions/xlsx-to-csv",
+    "pdfToHtml": "actions/pdf-to-html",
+    "pptxToHtml": "actions/pptx-to-html",
+    "docxToPdf": "actions/docx-to-pdf",
+}
+
+
+def _import_form(
+    method: str | None, content_type: str | None, parent_id: str | None
+) -> dict[str, Any]:
+    """The optional import form/JSON fields (server defaults: method=site, type='')."""
+    form: dict[str, Any] = {}
+    if method is not None:
+        form["method"] = method
+    if content_type is not None:
+        form["type"] = content_type
+    if parent_id is not None:
+        form["parentId"] = parent_id
+    return form
+
+
+async def import_document(
+    client: HaxcmsClient,
+    kind: str,
+    *,
+    filename: str,
+    content: bytes,
+    mimetype: str,
+    method: str | None = None,
+    content_type: str | None = None,
+    parent_id: str | None = None,
+) -> dict[str, Any]:
+    """POST actions/import-{kind} (multipart) -> `{items, filename, ...}`.
+
+    The document importers read `req.files[0]`, so any file-field name works; we send
+    `file-upload` (the Phase 5 convention). Optional form fields: `method`
+    (site|branch|page), `type` (course|portfolio; empty falls back to lesson-overview
+    content), `parentId`. importDocx enforces the .docx extension AND zip magic;
+    importXlsx echoes `selectedSheet`. Errors are 400 with `data.error`.
+    """
+    route = IMPORT_KIND_ROUTES.get(kind)
+    if route is None:
+        raise HaxcmsMcpError(
+            ErrorCode.INVALID_ARGUMENT,
+            f"unknown import kind {kind!r}",
+            hint=f"supported kinds: {', '.join(sorted(IMPORT_KIND_ROUTES))}",
+        )
+    response = await client.request(
+        "POST",
+        client.sys(route),
+        files={"file-upload": (filename, content, mimetype)},
+        data=_import_form(method, content_type, parent_id) or None,
+        auth="bearer+user",
+    )
+    return unwrap_dict(response)
+
+
+async def import_platform(
+    client: HaxcmsClient,
+    platform: str,
+    *,
+    repo_url: str | None = None,
+    filename: str | None = None,
+    content: bytes | None = None,
+    mimetype: str | None = None,
+    method: str | None = None,
+    content_type: str | None = None,
+    parent_id: str | None = None,
+) -> dict[str, Any]:
+    """POST site/import/{platform} -> `{items, filename, files?, siteFiles?, site?}`.
+
+    Two body modes (siteImport.js): a multipart FILE upload — only the `html` platform
+    accepts one, with the field name restricted to upload|file|file-upload and the
+    extension to .html/.htm — or JSON `{repoUrl, method?, type?, parentId?}` for the
+    remote platforms (haxcms, pressbooks, gitbook, notion, wordpress, elmsln,
+    drupal-book, plone, openstax, vitepress). The dispatcher lowercases/trims the
+    platform (unknown -> 400 'Unsupported import platform'). `repoUrl` passes the
+    safeFetch SSRF guard: private, loopback and link-local addresses are refused with
+    400 `data.error`, and fetch failures are 400 too.
+    """
+    path = client.sys(f"site/import/{platform.strip().lower()}")
+    form = _import_form(method, content_type, parent_id)
+    if content is not None:
+        if filename is None:
+            raise HaxcmsMcpError(
+                ErrorCode.INVALID_ARGUMENT,
+                "filename is required for a multipart platform import",
+            )
+        response = await client.request(
+            "POST",
+            path,
+            files={"file-upload": (filename, content, mimetype or "text/html")},
+            data=form or None,
+            auth="bearer+user",
+        )
+    else:
+        if not repo_url:
+            raise HaxcmsMcpError(
+                ErrorCode.INVALID_ARGUMENT,
+                "import_platform needs either repo_url or file content",
+            )
+        payload: dict[str, Any] = {"repoUrl": repo_url, **form}
+        response = await client.request("POST", path, json=payload, auth="bearer+user")
+    return unwrap_dict(response)
+
+
+async def action(
+    client: HaxcmsClient,
+    operation_id: str,
+    *,
+    json: dict[str, Any] | None = None,
+    files: dict[str, Any] | None = None,
+    data: dict[str, Any] | None = None,
+    params: dict[str, Any] | None = None,
+    raw: bool = False,
+    timeout: float | None = None,
+) -> Any:
+    """POST one of the twelve converter actions by spec operationId (ADR-0002).
+
+    JSON-body converters (mdToHtml, htmlToMd, prettyHtml, jsonToYaml, yamlToJson) take
+    `json`; the multipart converters (docxToHtml, xlsxToCsv, pdfToHtml, pptxToHtml and —
+    contra the vendored spec, source-verified — htmlToDocx, htmlToPdf) take `files`;
+    xlsxToCsv's sheet rides in `params`. Envelope results come back as `data`
+    (`{contents, ...}`; base64 `contents` + `filename` for htmlToDocx/htmlToPdf).
+    `raw=True` returns the response BYTES for docxToPdf, which streams application/pdf
+    past the envelope. Errors are 400 with `data.error`.
+    """
+    route = ACTION_ROUTES.get(operation_id)
+    if route is None:
+        raise HaxcmsMcpError(
+            ErrorCode.INVALID_ARGUMENT,
+            f"unknown converter operation {operation_id!r}",
+            hint=f"supported operations: {', '.join(sorted(ACTION_ROUTES))}",
+        )
+    response = await client.request(
+        "POST",
+        client.sys(route),
+        json=json,
+        files=files,
+        data=data,
+        params=params,
+        auth="bearer+user",
+        timeout=timeout,
+    )
+    if raw:
+        if response.status_code >= 400:
+            raise error_from_response(response)
+        return response.content
+    return unwrap(response)
