@@ -17,7 +17,7 @@ Read order at the start of a Session: PLAN.md §0 → CONTEXT.md → this file �
 | 4 | Content and block tools | done | `phase-04` | see tag |
 | 5 | Files | done | `phase-05` | see tag |
 | 6 | Site settings | done | `phase-06` | see tag |
-| 7 | Imports and generated converters | not started | | |
+| 7 | Imports and generated converters | done | `phase-07` | see tag |
 | 8 | Exports | not started | | |
 | 9 | Prompts, docs, hardening, e2e | not started | | |
 
@@ -319,6 +319,43 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
   hexCode, cssVariable}) WITHOUT `regions`; `metadata.author` = {}; `metadata.platform` =
   {audience: 'expert', features: {}, allowedBlocks: []}. Every manifest write bumps
   `metadata.site.updated` (epoch seconds) and git-commits.
+- (Phase 7, live probes, e969655c) Import responses: every `actions/import-<kind>` returns
+  `{items, filename}` (xlsx adds `selectedSheet` = the FIRST sheet, or the `sheet` QUERY param).
+  docx method=site → one record per H1/H2 with nested `parent-slug/child-slug` slugs (H3 folds
+  into its H2's content stream); method=branch → the flat H1 records only; method=page → ONE
+  record titled with the filename stem holding the whole document. xlsx parent-column slugs
+  resolve to the parent's server-fresh id.
+- (Phase 7, T7.7, live) `build.type` strings: the service composes `"<kind> import"` and ALL five
+  kinds accept it; createSite persists site.json `metadata.build` = {version: the SERVER's own
+  build string ("26.8.0" on this checkout — assert structure/type only), structure: "import",
+  type: "<kind> import"}. An imported site's outline is EXACTLY the document tree — no Home page
+  is added.
+- (Phase 7, T7.7, live) DOCX inline images materialize on BOTH import paths (import_document into
+  an existing site AND create_site_from_document): the data-URI PNG lands as
+  `files/<child-slug>.jpg` (server re-encodes to JPEG, 120×80 kept), is registered in
+  `files/files.json` (HAXCMS-FILE-SCHEMA-V1), the body references it as `<media-image
+  source="files/...">`, and the item's `metadata.files` carries the record uuid.
+- (Phase 7, live) Bulk createPages stores the importer's records verbatim → branch-imported pages
+  keep `indent: 0` (nesting lives in the parent refs only). `get_outline` returns a NESTED TREE;
+  each bucket sorts by (order, title), so an imported order-0 root precedes the site's Home page.
+- (Phase 7, T7.3, live) SSRF guard: `site/import/{platform}` with a repoUrl resolving to
+  loopback/private/reserved/link-local/metadata space → 400 INVALID_ARGUMENT "Unable to fetch
+  URL: URL target resolves to a private, reserved, loopback, link-local, or metadata address";
+  NO env override exists. The html platform's only reachable LOCAL mode is the multipart upload.
+- (Phase 7, T7.4, source + live) Spec-vs-reality (26.8.1), pinned as generator OVERRIDES:
+  htmlToDocx and htmlToPdf are multipart .html/.htm uploads contra their spec JSON bodies;
+  xlsxToCsv's `sheet` rides as a QUERY param; docxToPdf streams raw application/pdf with no JSON
+  envelope. Chrome ops (htmlToPdf, docxToPdf) 400 with "No Chrome/Chromium executable found.
+  Install Chrome or set PUPPETEER_EXECUTABLE_PATH." when Chrome is absent.
+- (Phase 7, live) Exact 26.8.1 converter outputs (asserted in test_p07_converters.py): mdToHtml →
+  `<h1>Title</h1>\n<p>Some <em>emphasis</em>.</p>\n`; htmlToMd uses SETEXT headings (`Title\n=====`);
+  prettyHtml → 2-space indent; htmlToDocx names the file after the source stem; pptxToHtml → one
+  `<div class="slide" data-slide-number="N">` per slide + a `files: {}` extra; xlsxToCsv echoes
+  originalFilename/sheetNames/selectedSheet/format extras.
+- (Phase 7, live) Import/converter 400s carry the message at `data.error` (not `data.message`);
+  422 (openstax/plone converters) maps to INVALID_ARGUMENT with the upstream message. Legacy
+  binary formats (.doc/.xls/.ppt) are refused LOCALLY at `detect_import_kind` — the server's
+  OOXML importers enforce .docx + zip magic, so the upload would be doomed.
 
 ## Environment notes
 
@@ -334,6 +371,8 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
 - Phase 4 timings: full `uv run pytest -m "not e2e"` (446 tests) ≈ 205s — 388 unit/regression +
   58 live; the Phase 4 live suites (31 integration + 1 functional, each integration test on its
   own throwaway site) dominate.
+- Phase 7 timings: unit + regression (602 tests) ≈ 76s; live integration + functional (114 tests:
+  110 passed, 4 skipped) ≈ 252s; registry now 112 tools.
 - Node version used: v22.23.3 (npm 10.9.9); system Python 3.13.6, project pinned 3.12
   (`.python-version`), uv 0.8.4.
 - fastmcp version pinned: `==4.0.10` (pyproject), mcp SDK v2 types via `fastmcp.mcp_types`.
@@ -342,7 +381,11 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
   messages. Write the message file with the editor/Write tooling, NOT `Set-Content -Encoding utf8`
   (PS 5.1 adds a BOM that ends up inside the commit subject; amend with `git commit --amend -F` if
   it happens).
-- Bash tool is rejected by the user in this workspace; use PowerShell for all shell work.
+- Shell: the Bash tool (Git Bash) is the reliable workhorse for git/pytest one-liners — it was
+  rejected once early in the Phase 0 session but every session since has used it throughout.
+  PowerShell 5.1 cannot chain with `&&` (parse error; use `;` + `if ($?)` or the Bash tool), and
+  the Bash tool blocks foreground `sleep` (use run_in_background / Monitor for waits). Throwaway
+  probe scripts at the repo root ARE picked up by `ruff check .` — delete them before the gates.
 - Python `subprocess.run(..., text=True)` decodes child output with the locale codepage
   (cp1252 here) unless `encoding="utf-8"` is passed — UTF-8 pytest output comes back as
   phantom mojibake. The harness always passes `encoding="utf-8"`.
@@ -1093,3 +1136,119 @@ verification: NO route persists `metadata.site.git` → `configure_site_git` rai
 - `metadata.site.updated` bumping + the git commit on every manifest write are cheap on-disk
   assertion handles for future live tests.
 - Fresh sites have NO `homePageId` key — always `.get()` it, on both sides of a comparison.
+
+---
+
+### Phase 7: Imports and generated converters
+
+**Session:** shared with Phases 0-6 (compacted several times)
+**Completed:** 2026-10-01, tag `phase-07`, final commit: see tag
+
+**Built** (PLAN's 6 commits, exactly)
+- `models/imports.py` + `client/system_api.py` (9c07784) — `detect_import_kind` (extension-first,
+  mimetype fallback, legacy .doc/.xls/.ppt refused locally), `ImportedItem`/`ImportData`
+  (files/siteFiles/site.license mapping + extras like selectedSheet)/`ImportResult`/
+  `ConversionResult` (text inline OR {path, bytes, mimetype, filename}); `import_document`
+  (multipart with method/type/parentId form fields), `import_platform` (JSON repoUrl + multipart
+  file modes), generic `action()` keyed by spec operationId with a raw-bytes mode for docxToPdf's
+  envelope-less stream; `envelope.py` learned `data.error` (the import/converter 400 key).
+- `services/imports.py` + `tools/imports.py` (60b8432, 97 → 100 tools) — the three composites:
+  resolve Source → detect kind → pre-resolve parent id-or-slug → `actions/import-<kind>` → bulk
+  `create_pages` → re-fetched ImportResult with skipped/warnings; `create_site_from_document`
+  (method=site import → createSite with build {type "<kind> import", structure "import", raw items
+  passthrough}); `create_site_from_platform` (repoUrl mode; files/siteFiles ride along in build;
+  SSRF/fetch 400s gain the private-or-unreachable hint). method/type/platform validated locally
+  against the exact server sets. 422 → INVALID_ARGUMENT (openstax/plone converters).
+- `scripts/gen_tools.py` + `services/conversion.py` (a8ae984) — deterministic generator over the
+  vendored `specs/system-spec.yaml` (fixed CONVERTERS order, no timestamps, LF writes, `--check`
+  exits 1 with a unified diff on drift); OVERRIDES pin the source-verified spec deviations;
+  conversion helpers write binary results under `settings.output_dir` with never-overwrite
+  `<stem>-<n>` naming and untrusted-filename sanitization.
+- `generated/converters.py` + `tools/converters.py` (a1373f1, 100 → 112 tools) — the twelve
+  `convert_*` tools, read-only hint true, descriptions = generated docstrings verbatim (DEVIATION
+  and NEEDS CHROME notes included). Two FastMCP landmines defused: the generated module OMITS
+  `from __future__ import annotations` (FastMCP resolves a partial-bound tool's string annotations
+  outside the module namespace → NameError), and `mcp.tool` rejects partials as first arg →
+  registration goes `Tool.from_function` + `mcp.add_tool`. CI lint job runs `gen_tools.py --check`;
+  in-process twin `tests/regression/test_p07_generator.py`.
+- `tests/fixtures/import/` (2afba4b) — `generate.py` + five committed fixtures with pinned
+  timestamps: syllabus.docx (2 H1 roots, 2 H2 units, 1 H3, inline PNG), slides.pptx (3 titled
+  slides), workbook.xlsx (Schedule + Roster, title/slug/parent/content header contract),
+  onepage.pdf, page.html. Dev deps python-docx/python-pptx/openpyxl/fpdf2 are test-time only.
+
+**Tests added**
+- unit: `test_p07_kind_detection.py` + `test_p07_import_payloads.py` (45 — kind matrix, respx
+  payload goldens for all three endpoint helpers, data.error mapping, model parsing),
+  `test_p07_gen_tools.py` + `test_p07_conversion.py` (41 — determinism, ast-level parameter
+  derivation for all 12 functions, override wiring, drift detection, LF-only; conversion helpers
+  incl. base64 validation + unique-name saturation) → unit+regression total **602** (≈76s).
+- regression: generator golden (committed module == fresh generation); `tool_schemas.json`
+  regenerated twice (97 → 100 → 112), each diff verified purely additive; boot-test matrix gained
+  the twelve converter names + schema and annotation checks (partial-bound params never leak into
+  the schema).
+- integration (27): import_document (method=site/branch/page incl. parent wiring, nested slugs,
+  disk bodies, materialized image + files.json record, xlsx wiring + selectedSheet echo, html,
+  pdf, content_type, legacy-.doc refusal), create_site_from_document (docx with the full T7.7
+  assertions, pptx flat slides, duplicate-name suffix + warning), platform (html multipart at the
+  API level, LIVE SSRF refusal with the composite's hint, unknown platform, env-URL-marked
+  gitbook/pressbooks), converters (all twelve exact 26.8.1 outputs; htmlToDocx into a tmp Output
+  Directory without overwrites; the two Chrome ops under needs_chrome with a probe-skip).
+- functional (1): `test_p07_course_from_docx.py` — "Build a course from my syllabus.docx" through
+  Tool calls only (site listed, outline tree mirrors the headings, first paragraph on page one,
+  nested lesson reachable by slug, inline image in list_files).
+- full live rerun: `uv run pytest tests/integration tests/functional -q` → **110 passed, 4
+  skipped** (2 network + 2 needs_chrome, by design) in 251.55s. `ruff check` + `ruff format
+  --check` + `mypy src` (73 files) clean.
+- exit-gate note: the combined `pytest -m "not e2e"` confirmation rerun (after the docs-only
+  PROGRESS.md edit) was killed ~3% in by OS memory pressure and deliberately NOT restarted
+  (harness policy on memory kills). Equivalence: the identical test tree passed as
+  unit+regression (602, 75.85s) and integration+functional (110+4 skipped, 251.55s, exit 0)
+  minutes earlier, and no e2e tests exist yet — the two runs together ARE the full non-e2e suite.
+
+**Verified facts** — see the cumulative list above (all Phase 7 bullets). T7.7 answers:
+`build.type` = `"<kind> import"` for all five kinds, persisted at `metadata.build` with the
+server's own version string; DOCX inline images DO become Files on both import paths (JPEG
+re-encode + files.json record + media-image reference + metadata.files uuid); Chrome-needing
+converters are exactly htmlToPdf + docxToPdf, skipped without it (this machine has no Chrome).
+
+**Deviations from PLAN.md**
+1. T7.6's "static two-page HTML site served by a local http server for the html platform import"
+   is IMPOSSIBLE: the server's safeFetch SSRF guard refuses loopback URLs and no override exists.
+   The local server still appears in `test_p07_create_site_from_platform.py` — as the refused
+   target (live assertion of the guard message + the composite's create_site_from_document hint) —
+   while the html platform's reachable local mode (multipart upload) is covered at the API level.
+2. T7.6's gitbook/pressbooks "public samples": no URLs are hardcoded (they rot); the tests are
+   `network`-marked and read `HAXCMS_MCP_TEST_GITBOOK_URL` / `HAXCMS_MCP_TEST_PRESSBOOKS_URL`,
+   skipping when unset.
+3. T7.4 spec-vs-reality (generator OVERRIDES, source-verified): htmlToDocx/htmlToPdf are multipart
+   .html/.htm uploads contra their spec JSON bodies; xlsxToCsv's `sheet` rides as a QUERY param;
+   docxToPdf returns raw application/pdf without an envelope.
+4. T7.6 fixtures are committed BINARIES with a regenerator (`generate.py`) — regenerating varies
+   ZIP-internal timestamps, so the binaries are refreshed deliberately, not casually.
+5. Chrome skipping (T7.7 "skip those without it") is implemented as the `needs_chrome` marker + a
+   runtime probe-skip matching the server's "No Chrome" 400 — green on Chrome-less machines, real
+   assertions when Chrome exists.
+6. The `gen_tools.py --check` CI step landed with commit 4 (not commit 3) so every commit stays
+   green — the check needs the generated file it compares against.
+
+**Known gaps / follow-ups**
+- The CI stale-dist gap (Phase 5) stands: Phase 7 was developed against the e969655c sibling
+  checkout; the import/converter routes likely exist in the npm dist too — UNTESTED; still a
+  Phase 9 hardening item.
+- The two needs_chrome converter tests and the two network platform tests have never executed
+  their assertions on this machine (no Chrome, no sample URLs) — they probe-skip by design.
+- content_type=course is shape-identical to the default on our fixture (every heading carries
+  body text) — acceptance is asserted; the placeholder-content toggle is not observable.
+
+**Notes for the next Session**
+- Phase 8 (exports): PDF export will hit the same Chrome-less 400 → T8.3's UNSUPPORTED mapping
+  ("instance has no Chrome for PDF rendering") is the expected local path; which
+  `site/export/{format}` values answer binary vs descriptor is UNVERIFIED — live-probe first.
+  The Output Directory patterns (never-overwrite naming, sanitized filenames, {path, bytes,
+  mimetype} results) already exist in `services/conversion.py` — reuse, do not reinvent.
+- Multipart converter signatures are `(client, settings, source, ...)`; JSON ops are
+  `(client, <fields>)`. `HaxcmsMcpError` carries `.code`, not `.error_code`.
+- The live-probe pattern remains the fastest path to ground truth: `uv run python - <<EOF` with
+  HaxcmsRuntime + in-memory Client + create/try/finally archive; expect ONE fixup iteration for
+  tree/sort semantics even after probing (get_outline's nested tree + root ordering surprised the
+  first draft of the Phase 7 assertions).
