@@ -138,9 +138,21 @@ class HaxcmsClient:
     ) -> httpx.Response:
         request = self.http.build_request(method, path, headers=headers, **kwargs)
         await self.budget.acquire()
-        return await with_retry(
+        started = time.monotonic()
+        response = await with_retry(
             self.http.send, request, policy, sleep=self._sleep, on_retry=self.budget.acquire
         )
+        # PLAN §5: every outbound request at DEBUG as `METHOD path status ms` — raw_path so
+        # %2F-encoded slugs log as sent, and never headers (they carry the bearer tokens).
+        elapsed_ms = (time.monotonic() - started) * 1000
+        logger.debug(
+            "%s %s %s %.0fms",
+            method,
+            request.url.raw_path.decode("ascii", errors="replace"),
+            response.status_code,
+            elapsed_ms,
+        )
+        return response
 
     # --- JSON convenience wrappers --------------------------------------------------
     async def get_json(self, path: str, **kwargs: Any) -> Any:

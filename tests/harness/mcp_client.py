@@ -1,7 +1,7 @@
 """Test helpers for driving the MCP server.
 
 `McpTestClient` wraps a fastmcp in-memory Client with conveniences used across the suites.
-The stdio subprocess helper for e2e tests lands in Phase 9.
+Real subprocess transports (stdio + HTTP) live in `tests/harness/mcp_process.py` (Phase 9).
 """
 
 from __future__ import annotations

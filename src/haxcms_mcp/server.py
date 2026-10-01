@@ -6,6 +6,9 @@ and middleware. Later Phases add their registrations here (PLAN.md Section 2.1).
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastmcp import FastMCP
 
 from haxcms_mcp.client import HaxcmsClient
@@ -34,7 +37,17 @@ from haxcms_mcp.tools.sites import register_sites_tools
 
 def build_server(settings: Settings) -> FastMCP:
     """Create and configure the FastMCP application for one Instance."""
-    mcp = FastMCP("haxcms-mcp")
+    client = HaxcmsClient(settings)
+
+    @asynccontextmanager
+    async def _lifespan(server: FastMCP) -> AsyncIterator[None]:
+        """Graceful shutdown (T9.4): the httpx client dies with the server session."""
+        try:
+            yield
+        finally:
+            await client.aclose()
+
+    mcp = FastMCP("haxcms-mcp", lifespan=_lifespan)
 
     # Order matters: read-only gate outermost, then logging, then error translation
     # closest to the tool functions.
@@ -42,7 +55,6 @@ def build_server(settings: Settings) -> FastMCP:
     mcp.add_middleware(ToolLoggingMiddleware())
     mcp.add_middleware(ErrorTranslationMiddleware())
 
-    client = HaxcmsClient(settings)
     # one shared catalog: the content tools and the typed block tools use the same
     # 10-minute live-merge cache
     catalog = CatalogService(client)
