@@ -274,3 +274,50 @@ async def patch_content(
         site=site,
     )
     return unwrap_dict(response)
+
+
+# --- Phase 4: read-only catalogs (API-REF §8) -------------------------------------------------
+#
+# Bearer-authenticated (optional upstream, consistent with the other reads); the catalog
+# service treats every failure here as "live data unavailable" and stays bundled-only.
+
+
+async def list_blocks(client: HaxcmsClient, site: str) -> dict[str, Any]:
+    """GET blocks -> block records + usage counts."""
+    response = await client.request("GET", client.site_path(site, "blocks"), auth="bearer")
+    return unwrap_dict(response)
+
+
+async def get_block(
+    client: HaxcmsClient, site: str, tag: str, *, include: str | None = None
+) -> dict[str, Any]:
+    """GET blocks/{tag}[?include=haxProperties,haxSchema,haxElementSchema] -> one record."""
+    params = {"include": include} if include else None
+    response = await client.request(
+        "GET",
+        client.site_path(site, f"blocks/{quote(tag, safe='')}"),
+        params=params,
+        auth="bearer",
+    )
+    return unwrap_dict(response)
+
+
+async def list_schemas(
+    client: HaxcmsClient, site: str, *, params: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """GET schemas?filter.kind=haxProperties&filter.webcomponentName={tag} -> records.
+
+    Served when the instance can find `<pkg>/lib/<tag>.haxProperties.json` in its build.
+    """
+    response = await client.request(
+        "GET", client.site_path(site, "schemas"), params=params, auth="bearer"
+    )
+    return unwrap_dict(response)
+
+
+async def get_custom_element(client: HaxcmsClient, site: str, tag: str) -> dict[str, Any]:
+    """GET custom-elements/{tag} -> the wc-registry entry (404 when the tag is unknown)."""
+    response = await client.request(
+        "GET", client.site_path(site, f"custom-elements/{quote(tag, safe='')}"), auth="bearer"
+    )
+    return unwrap_dict(response)

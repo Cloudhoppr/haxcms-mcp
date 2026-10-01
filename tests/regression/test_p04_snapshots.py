@@ -5,8 +5,9 @@
 * `serializer`: parse → serialize output for every fixture page — pins the lxml html
   serialisation (double quotes, bare empty attributes, slot preservation) the block
   operations and goldens build on.
+* `catalog`: every bundled catalog entry — pins the extraction pipeline output and the
+  CatalogEntry model shape agents read through list_blocks / get_block_schema.
 
-Later Phase 4 commits extend this file with the catalog snapshot.
 Update deliberately with `pytest --snapshot-update`.
 """
 
@@ -18,6 +19,7 @@ from typing import Any
 import pytest
 
 from haxcms_mcp.models.item import Item
+from haxcms_mcp.services.catalog.service import CatalogService
 from haxcms_mcp.services.content.page_break import build_page_break
 from haxcms_mcp.services.content.parser import parse_blocks
 from haxcms_mcp.services.content.serializer import serialize
@@ -92,3 +94,14 @@ def _serializer_goldens() -> dict[str, str]:
 def test_serializer_goldens(request: pytest.FixtureRequest) -> None:
     update = bool(request.config.getoption("--snapshot-update", default=False))
     assert_or_update_snapshot("serializer", _serializer_goldens(), update=update)
+
+
+def _catalog_goldens() -> dict[str, Any]:
+    """Every bundled catalog entry (model_dump) keyed by tag."""
+    service = CatalogService()
+    return {tag: entry.model_dump() for tag, entry in sorted(service.bundled.items())}
+
+
+def test_catalog_goldens(request: pytest.FixtureRequest) -> None:
+    update = bool(request.config.getoption("--snapshot-update", default=False))
+    assert_or_update_snapshot("catalog", _catalog_goldens(), update=update)
