@@ -21,7 +21,10 @@ MSG_AUTH_REQUIRED = "Authentication required"
 MSG_SITE_TOKEN_REQUIRED = "X-HAXCMS-Site-Token header is required for this endpoint"
 MSG_USER_TOKEN_REQUIRED = "X-HAXCMS-User-Token header is required for this endpoint"
 MSG_TOO_MANY_LOGINS = "Too many failed login attempts"
-MSG_DISABLED_FOR_SITE = "is disabled for this site"
+# The feature-gate 403 tail. Upstream varies the verb — "Manifest editing IS disabled for
+# this site", "Platform settings ARE disabled for this site", "Outline operations ARE ...",
+# "Uploading media IS ...", "File operations ARE ..." — so match the shared tail (PLAN L220).
+MSG_DISABLED_FOR_SITE = "disabled for this site"
 MSG_FAILED_TO_WRITE = "failed to write"
 MSG_SITE_NOT_FOUND = "Site not found"
 

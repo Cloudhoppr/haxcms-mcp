@@ -88,6 +88,28 @@ def test_403_disabled_for_site_maps_to_feature_disabled() -> None:
     assert "is disabled for this site" in error.message
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        # the settings/outline/files gates use the ARE form (Phase 6 source read):
+        "Platform settings are disabled for this site",
+        "Theme settings are disabled for this site",
+        "SEO settings are disabled for this site",
+        "Editor settings are disabled for this site",
+        "Allowed blocks settings are disabled for this site",
+        "Outline operations are disabled for this site",
+        "File operations are disabled for this site",
+        "Uploading media is disabled for this site",
+        "Manifest editing is disabled for this site",
+        "This operation is disabled for this site",  # featureDisabledResponse default
+    ],
+)
+def test_403_are_disabled_variant_maps_to_feature_disabled(message: str) -> None:
+    error = error_from_response(make(403, err(message)))
+    assert error.code is ErrorCode.FEATURE_DISABLED
+    assert error.message == message
+
+
 def test_404_maps_to_not_found_with_exact_message() -> None:
     with pytest.raises(HaxcmsMcpError) as excinfo:
         unwrap(make(404, err("Site not found")))
