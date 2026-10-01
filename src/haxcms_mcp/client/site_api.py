@@ -364,10 +364,10 @@ async def upload_file(
 ) -> dict[str, Any]:
     """POST files (multipart) -> `{file: {path, fullUrl, url, type, name, size, uuid, ...}}`.
 
-    The multipart field is `file-upload` (the server also accepts `upload` or `file`);
-    `nodeId` optionally associates the upload with a page. Upload limit defaults to 50mb
-    (`HAXCMS_UPLOAD_LIMIT`); extensions are gated server-side by
-    `HAXCMSFile.ALLOWED_MIME_BY_EXTENSION` — expect 400 on mismatch.
+    The multipart field is `file-upload` (the server also accepts `upload`, `file` or
+    `files[]` via multer `.any()`, in that preferred order); `nodeId` optionally associates
+    the upload with a page. Upload limit defaults to 50mb (`HAXCMS_UPLOAD_LIMIT`); a
+    disallowed extension is refused with HTTP 500 'File type not allowed' (-> UPSTREAM_ERROR).
     """
     files = {"file-upload": (filename, content, mimetype)}
     data = {"nodeId": node_id} if node_id else None
