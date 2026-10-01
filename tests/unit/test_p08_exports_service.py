@@ -43,10 +43,7 @@ APP_SETTINGS_JS = (
 
 ZIP_BYTES = b"PK\x03\x04" + b"\x00" * 16
 HTML_BYTES = b"<html><body><h1>Home</h1></body></html>"
-NO_CHROME = (
-    "Unable to complete PDF export conversion: No Chrome/Chromium executable found. "
-    "Install Chrome or set PUPPETEER_EXECUTABLE_PATH."
-)
+NO_CHROME = "No Chrome/Chromium executable found. Install Chrome or set PUPPETEER_EXECUTABLE_PATH."
 
 SKELETON = {
     "meta": {"name": "demo", "machineName": "demo", "type": "skeleton"},

@@ -249,8 +249,10 @@ async def test_site_export_conversion_failure_maps_to_upstream_error() -> None:
                 "status": 502,
                 "data": {
                     "message": (
-                        "Unable to complete PDF export conversion: No Chrome/Chromium "
-                        "executable found. Install Chrome or set PUPPETEER_EXECUTABLE_PATH."
+                        # live-probed wording of the site export route (the converter
+                        # actions prefix theirs with "Unable to complete ... conversion:")
+                        "No Chrome/Chromium executable found. "
+                        "Install Chrome or set PUPPETEER_EXECUTABLE_PATH."
                     )
                 },
             },
