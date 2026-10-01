@@ -15,6 +15,7 @@ from haxcms_mcp.middleware import (
     ReadOnlyMiddleware,
     ToolLoggingMiddleware,
 )
+from haxcms_mcp.prompts.journeys import register_prompts
 from haxcms_mcp.resources.catalog import register_catalog_resources
 from haxcms_mcp.resources.sites import register_site_resources
 from haxcms_mcp.services.catalog.service import CatalogService
@@ -58,5 +59,6 @@ def build_server(settings: Settings) -> FastMCP:
     register_export_tools(mcp, settings, client)
     register_catalog_resources(mcp, settings, client, catalog)
     register_site_resources(mcp, settings, client)
+    register_prompts(mcp)
 
     return mcp
