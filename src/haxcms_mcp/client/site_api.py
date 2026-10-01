@@ -221,3 +221,56 @@ async def list_tags(client: HaxcmsClient, site: str) -> dict[str, Any]:
     """GET tags -> `{count, total, page, tags: [{tag, count}]}` sorted by -count."""
     response = await client.request("GET", client.site_path(site, "tags"), auth="bearer")
     return unwrap_dict(response)
+
+
+# --- Phase 4: content ---------------------------------------------------------------------
+
+
+def _content_path(client: HaxcmsClient, site: str, id_or_slug: str) -> str:
+    segment = quote(id_or_slug, safe="")  # nested slugs contain `/`
+    return client.site_path(site, f"content/{segment}")
+
+
+async def get_content(
+    client: HaxcmsClient, site: str, id_or_slug: str, *, fmt: str = "json"
+) -> dict[str, Any]:
+    """GET content/{idOrSlug}?format=json -> `{id, slug, title, format, mode, body, links}`.
+
+    Always read with `fmt="json"`: for a single page the route wraps non-JSON-format
+    responses in a `<pre>` envelope (live-verified Phase 3). Bearer so unpublished pages
+    are readable. `body` never contains the `<page-break>` (stripped on save).
+    """
+    response = await client.request(
+        "GET", _content_path(client, site, id_or_slug), params={"format": fmt}, auth="bearer"
+    )
+    return unwrap_dict(response)
+
+
+async def patch_content(
+    client: HaxcmsClient,
+    site: str,
+    id_or_slug: str,
+    body: str,
+    *,
+    schema: list[dict[str, Any]] | None = None,
+    details: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """PATCH content/{idOrSlug} -> the updated item record (updateContent → saveNode).
+
+    `body` MUST start with the `<page-break>` envelope — without it saveNode parses zero
+    segments and silently writes nothing (still 200). `schema` fills metadata.images/videos;
+    `details` merges node details (configure/advanced shapes).
+    """
+    payload: dict[str, Any] = {"site": {"name": site}, "body": body}
+    if schema is not None:
+        payload["schema"] = schema
+    if details is not None:
+        payload["details"] = details
+    response = await client.request(
+        "PATCH",
+        _content_path(client, site, id_or_slug),
+        json=payload,
+        auth="bearer+site",
+        site=site,
+    )
+    return unwrap_dict(response)

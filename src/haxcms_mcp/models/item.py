@@ -91,7 +91,9 @@ class ItemMetadata(BaseModel):
     image: str | None = None
     icon: str | None = None
     accent_color: str | None = None
-    theme: str | None = None
+    # saveNode.js stores the FULL theme object ({element, path, ..., key}) for pages with a
+    # developer-theme; manifests written by older tooling may carry a bare key string
+    theme: dict[str, Any] | str | None = None
     region: str | None = None
     files: list[Any] | None = None
     images: list[str] | None = None
