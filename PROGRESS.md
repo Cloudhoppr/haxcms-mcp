@@ -14,7 +14,7 @@ Read order at the start of a Session: PLAN.md §0 → CONTEXT.md → this file �
 | 1 | Core client and session tools | done | `phase-01` | see tag |
 | 2 | Site lifecycle tools | done | `phase-02` | see tag |
 | 3 | Outline and page tools | done | `phase-03` | see tag |
-| 4 | Content and block tools | not started | | |
+| 4 | Content and block tools | done | `phase-04` | see tag |
 | 5 | Files | not started | | |
 | 6 | Site settings | not started | | |
 | 7 | Imports and generated converters | not started | | |
@@ -174,6 +174,38 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
   `<page-break>` (stripped on save). The §5.2 Page Break rule is confirmed live: saves WITH the
   minimal `<page-break item-id title slug published="published">` prefix write and commit; per
   saveNode.js source a body WITHOUT it writes nothing and still returns 200.
+- (Phase 4, live test, T4.7) The no-envelope save is a SILENT no-op: a raw `PATCH content/{id}`
+  whose body lacks the `<page-break>` prefix returns a 200 item record but writes NOTHING — the
+  stored body stays byte-identical (`test_p04_content_roundtrip.py`). This justifies the envelope
+  guard in `set_page_content`.
+- (Phase 4, live test, T4.7) An envelope WITHOUT the `published` attribute CLEARS the flag:
+  `metadata.published` is False after such a save — the envelope builder must replay the item's
+  current flag on every content save (it does; `build_page_break` emits `published="published"`
+  only when the item's flag is truthy).
+- (Phase 4, live test, T4.7) `card="card"` is stored byte-identical — no sanitisation rewrite of
+  the boolean-style attribute form.
+- (Phase 4, live tests, T4.7) saveNode sanitisation contract, golden-captured: every Core Block
+  TAG survives storage unchanged, and the GET body equals the on-disk `pages/<id>/index.html`
+  byte-for-byte. Exactly four attribute-form rewrites occur: (a) `target="_blank"` on `<a>` is
+  DROPPED; (b) `preserve-content` on `<template>` (code-sample) is DROPPED; (c) the bare boolean
+  `correct` on assessment `<input>`s is DROPPED (multiple-choice/true-false/short-answer/matching/
+  mark-the-words/tagging lose their correctness markers in STORED content); (d) attribute VALUES
+  are entity-decoded then re-escaped with only `&`→`&amp;` and `"`→`&quot;` — single-quoted JSON
+  attributes (vocab-term `links`, lrndesign-timeline `events`) come back double-quoted with
+  `&quot;` and raw `<p>` inside, `&lt;` inside plain values becomes raw `<`, `&amp;` stays
+  `&amp;`; TEXT nodes keep their escaping. `stored_form()` in
+  `tests/integration/test_p04_typed_blocks_live.py` encodes this rewrite exactly — reuse it.
+- (Phase 4, live probe, T4.7) `GET schemas?filter.kind=haxProperties&filter.webcomponentName=
+  self-check` DOES return data on the test instance: `{count: 1, schemas: [{id: "hax-properties",
+  kind: "haxProperties", schema: {tag: "self-check", gizmo: {...}}}], links}`; `GET
+  blocks/{tag}?include=haxProperties` also returns a `haxProperties` key — both live-merge routes
+  work.
+- (Phase 4, live) A FRESH page starts with one empty `<p></p>` block, and an empty
+  `set_page_content("")` save re-seeds `<p></p>` — block indices on fresh pages are baseline+1 per
+  insert (the typed-tools live suite asserts this baseline before inserting).
+- (Phase 4, live) Renaming a page REGENERATES its slug from the new title (pathauto, matches the
+  Phase 3 setTitle fact): the slug returned by `create_page` is stale after
+  `update_page_details(title=...)` — use the rename result's slug for later slug-addressed reads.
 
 ## Environment notes
 
@@ -186,6 +218,9 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
 - Phase 3 timings: unit + regression (210 tests) ≈ 17s; live `integration or functional`
   (26 tests, ~10 site create/archive cycles) ≈ 51s warm; full `uv run pytest -m "not e2e"`
   (236 tests) ≈ 70s warm.
+- Phase 4 timings: full `uv run pytest -m "not e2e"` (446 tests) ≈ 205s — 388 unit/regression +
+  58 live; the Phase 4 live suites (31 integration + 1 functional, each integration test on its
+  own throwaway site) dominate.
 - Node version used: v22.23.3 (npm 10.9.9); system Python 3.13.6, project pinned 3.12
   (`.python-version`), uv 0.8.4.
 - fastmcp version pinned: `==4.0.10` (pyproject), mcp SDK v2 types via `fastmcp.mcp_types`.
@@ -604,3 +639,124 @@ envelope + Page Break rule confirmed live.
   site per test for free (each costs one create/archive cycle ≈ 4s).
 - Search results with `fields` set are PROJECTED (only the requested keys come back) —
   tool docstrings must not promise full records when `fields` is passed.
+
+---
+
+### Phase 4: Content and block tools
+
+**Session:** shared with Phases 0-3 (compacted several times)
+**Completed:** 2026-10-01, tag `phase-04`
+
+**Built** (8 commits, exactly the PLAN Phase 4 list)
+- `services/content/page_break.py` — pure `build_page_break(item)` (§5.2 attribute set:
+  item-id/title/slug always; `published="published"` only when the item's flag is truthy; depth,
+  parent, description, hide-in-menu, page-type, tags list→CSV, related-items, image, icon,
+  accent-color, developer-theme, override-pathauto; values HTML-escaped) + `save_content`
+  (fresh get_item → envelope + body → PATCH content → re-GET).
+- `services/content/parser.py` / `serializer.py` — lxml block parsing (`parse_blocks` →
+  `Block{index, tag, attributes, text, html}`; bare top-level text wrapped; slotted children
+  preserved; boolean attributes kept) and serialisation; round-trip goldens vs the five fixture
+  pages in `tests/fixtures/pages/` (tutorial_finished, grid_plate, quiz, bare_text, empty).
+- `services/content/anchors.py` — anchor resolution: text substring, selector (`tag`,
+  `tag[attr*=value]`), auto-detection, `occurrence` disambiguation; NOT_FOUND payloads carry
+  did-you-mean candidates, ambiguous anchors return the match list.
+- `services/content/service.py` + `blocks.py` + `services/locks.py` — `get_page_content`,
+  `set_page_content` (per site+page async lock, envelope from a FRESH item, media schema, PATCH,
+  re-GET), `get_page_blocks`; block ops `insert_block` (append/prepend/before/after × anchors),
+  `replace_block`, `remove_block`, `move_block`, `update_block_attributes`, `set_block_text`,
+  `wrap_text_with_link` — every op saves through the envelope path and returns
+  `BlockOpResult{operation, saved, affected, block_count, html, blocks}`; one git revision per
+  op (live-asserted via `list_page_revisions` totals).
+- `services/catalog/` — 31 bundled `bundled/<tag>.json` records (one per Appendix B Core Block,
+  extracted from the haxcms-nodejs public build with `scripts/extract_hax_properties.py`),
+  `hax_properties.py` normaliser, `CatalogService` with `list_blocks` (summaries + category),
+  `get_block_schema` (merged record) and `validate(tag, attributes)` (unknown attributes
+  rejected WITH the known list); live merge via `GET blocks`, `GET blocks/{tag}?include=
+  haxProperties`, `GET schemas?filter.kind=haxProperties`.
+- `tools/content.py` — the 12 generic tools: get_page_content, set_page_content (destructive),
+  get_page_blocks, add_block, replace_block, remove_block, move_block, update_block,
+  set_block_text, add_link, list_blocks, get_block_schema.
+- `tools/blocks_typed.py` — the 37 typed tools: 31 `add_<block>` mirroring the Appendix B
+  signatures + 6 native (add_paragraph, add_heading, add_list, add_table, add_blockquote,
+  add_divider); all accept the shared page/anchor/occurrence/placement/site tail; each builds
+  attributes through the catalog + `validate` and inserts via `insert_block`.
+- `resources/catalog.py` (`haxcms://catalog/blocks`, `haxcms://catalog/blocks/{tag}`) and
+  `resources/sites.py` (`haxcms://sites`, `haxcms://sites/{site}`, `haxcms://sites/{site}/outline`,
+  `haxcms://sites/{site}/pages/{id_or_slug}` — content HTML with `<!-- block N: tag -->` index
+  comments).
+- `client/site_api.py` extended (get_item include_content, patch_content, get_content,
+  list_schemas, get_block); `models/content.py` (Block, PageContent, BlockOpResult); `server.py`
+  now registers 78 tools and 6 resources.
+
+**Tests added**
+- unit: `test_p04_page_break.py` (10), `test_p04_parser.py` (24), `test_p04_anchors.py` (18),
+  `test_p04_block_ops.py` (28), `test_p04_catalog.py` (32), `test_p04_content_tools.py` (18),
+  `test_p04_typed_tools.py` (43) — 173 new; `test_p00_server_boot.py` grew by 2 (78-tool
+  registry + Phase 4 annotation matrix).
+- integration: `test_p04_content_roundtrip.py` (7), `test_p04_block_ops_live.py` (5),
+  `test_p04_typed_blocks_live.py` (9: table-coverage guard + 8 category chunks),
+  `test_p04_resources.py` (10).
+- regression: `test_p04_snapshots.py` (3) + new goldens `page_break.json`, `serializer.json`,
+  `catalog.json`; `tool_schemas.json` regenerated for 78 tools.
+- functional: `test_p04_rebuild_tutorial_page.py` (1).
+- full rerun: `uv run pytest -m "not e2e"` → 446 passed in ~205s (388 unit/regression, 58 live).
+
+**Verified facts** — see the cumulative list (all Phase 4 bullets): the five T4.7 items
+(no-envelope silent no-op still 200; published-absent clears the flag; `card="card"`
+byte-identical; all tags survive sanitisation with exactly four attribute rewrites and
+GET==disk; the schemas haxProperties route DOES return self-check data) plus the fresh-page
+`<p></p>` baseline and pathauto slug regeneration on rename.
+
+**Deviations from PLAN.md**
+- The functional tutorial test follows the FIXTURE positions, not Appendix D's paragraph
+  ordinals: `tests/fixtures/pages/tutorial_finished.html` (the T4.2 golden) is authoritative —
+  "Designing in the Prairie Spirit" lands BEFORE the prairie paragraph (D says after paragraph
+  6), "The First Secret is Noticing" BEFORE the noticing paragraph (D says after paragraph 3),
+  and Songline_1 anchors AFTER paragraph 3 (D prepends it at the top of the page). D's ordinals
+  describe the original course page; PLAN L851-852 asks to assert the final block sequence
+  against the golden.
+- The fixture's `target="_blank"` is an AUTHORED form that cannot survive a save (saveNode
+  strips it) — the functional test asserts the stored form and that `target="_blank"` is absent
+  from the body.
+- Appendix B parameters that 26.8.1's elements do not have (the assessment `title`s,
+  page-section `accent_color`) are KEPT in the tool signatures (PLAN signatures immutable) and
+  pass through to catalog validation, which rejects them with the known-attribute list;
+  `place-holder kind="code"` (Appendix B) fails validation — 26.8.1's enum is
+  text|document|audio|video|image|math. Both behaviours are documented in the docstrings.
+- `add_vocab_term(links=None)` — PLAN spells the default `[]`; None means the same thing and
+  keeps the linter's mutable-default rule (B006).
+- The catalog live merge is a UNION that keeps bundled-only attributes the live haxProperties
+  lack; bundled `example_html` is slightly richer than Appendix B where the real 26.8.1 shapes
+  need it (stop-note icon + `slot="message"` div, a11y-collapse `expanded`, video-player
+  `accent-color`, image-compare-slider `title`) so every example passes `validate`.
+- All Phase 4 tools take `site` as the LAST optional parameter (Phases 2-3 convention) even
+  where PLAN Appendix B lists it first.
+- `haxcms://sites/{site}/outline` renders ONE JSON payload with `text` (indented tree) and
+  `outline` (structured) keys instead of two MIME parts.
+- One shared `CatalogService` (single live-merge cache) is built in `server.py` and injected
+  into both the catalog tools and the typed block tools.
+- Failed resource reads surface on the wire as `MCPError` with the `[CODE] message. hint`
+  formatted string (the in-memory Client re-raises these); `McpTestClient.read_resource`
+  returns the text payload for successful reads.
+
+**Known gaps / follow-ups**
+- Assessment correctness does NOT survive storage on 26.8.1: saveNode drops the bare boolean
+  `correct` on `<input>`s, so stored multiple-choice/true-false/short-answer/matching/
+  mark-the-words/tagging blocks lose their answer keys (upstream behaviour, not ours). Phase 9
+  e2e stories must not assert stored `correct` attributes.
+- `wrap_text_with_link` wraps the FIRST occurrence of the text inside the anchored block; there
+  is no per-occurrence targeting inside a block.
+- The catalog live merge caches per server instance; a site that gains new element definitions
+  mid-session would not be re-merged until restart.
+
+**Notes for the next Session**
+- `stored_form()` in `tests/integration/test_p04_typed_blocks_live.py` is the executable spec of
+  saveNode sanitisation — reuse it whenever a later Phase compares authored vs stored HTML
+  (Phase 5's "upload an image and place it on a page" composite touches media-image attributes).
+- Revision totals via `list_page_revisions` are the cheapest proof a save actually wrote:
+  a total that does not grow means the save silently no-oped (missing envelope).
+- Phase 5 imports `services/content/blocks.insert_block` and the `media-image` catalog entry
+  by import only (PLAN Phase 5 independence note); the `site`/`page` fixtures and
+  `haxcms.read_page_html` cover its assertions.
+- Scratch pytest files must NOT start with a leading dot (importlib rejects them at
+  collection); use `probe_tmp.py` and delete after.
