@@ -16,6 +16,7 @@ from haxcms_mcp.middleware import (
     ToolLoggingMiddleware,
 )
 from haxcms_mcp.tools.auth import register_auth_tools
+from haxcms_mcp.tools.sites import register_sites_tools
 
 
 def build_server(settings: Settings) -> FastMCP:
@@ -30,5 +31,6 @@ def build_server(settings: Settings) -> FastMCP:
 
     client = HaxcmsClient(settings)
     register_auth_tools(mcp, settings, client)
+    register_sites_tools(mcp, settings, client)
 
     return mcp

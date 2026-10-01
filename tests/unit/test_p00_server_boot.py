@@ -46,13 +46,27 @@ def _add_fake_error_tool(mcp: FastMCP) -> None:
         )
 
 
-async def test_server_lists_the_session_tools() -> None:
+async def test_server_lists_the_registered_tools() -> None:
     mcp = build_server(_settings())
     async with Client(mcp) as client:
         tools = await client.list_tools()
     by_name = {t.name: t for t in tools}
-    # Phase 1 registers the four session tools (PLAN T1.7).
-    assert sorted(by_name) == ["get_server_info", "login", "logout", "whoami"]
+    # Phase 1 registers the four session tools (PLAN T1.7); Phase 2 the nine site tools (T2.4).
+    assert sorted(by_name) == [
+        "archive_site",
+        "clone_site",
+        "create_site",
+        "create_site_from_skeleton",
+        "get_server_info",
+        "get_site",
+        "get_skeleton",
+        "list_sites",
+        "list_skeletons",
+        "list_themes",
+        "login",
+        "logout",
+        "whoami",
+    ]
 
     ann = by_name["get_server_info"].annotations
     assert ann is not None
@@ -67,6 +81,34 @@ async def test_server_lists_the_session_tools() -> None:
         assert tool_ann is not None, name
         assert tool_ann.read_only_hint is read_only, name
         assert tool_ann.destructive_hint is False, name
+
+
+async def test_site_tool_annotations() -> None:
+    """Phase 2 annotation matrix (PLAN §5 + tool inventory): reads, writes, destructive."""
+    mcp = build_server(_settings())
+    async with Client(mcp) as client:
+        tools = await client.list_tools()
+    by_name = {t.name: t for t in tools}
+
+    read_only = ["get_site", "list_sites", "list_themes", "list_skeletons", "get_skeleton"]
+    for name in read_only:
+        tool_ann = by_name[name].annotations
+        assert tool_ann is not None, name
+        assert tool_ann.read_only_hint is True, name
+        assert tool_ann.destructive_hint is False, name
+
+    # creating/cloning repeats produce new sites -> not idempotent
+    for name in ["create_site", "create_site_from_skeleton", "clone_site"]:
+        tool_ann = by_name[name].annotations
+        assert tool_ann is not None, name
+        assert tool_ann.read_only_hint is False, name
+        assert tool_ann.destructive_hint is False, name
+        assert tool_ann.idempotent_hint is False, name
+
+    archive_ann = by_name["archive_site"].annotations
+    assert archive_ann is not None
+    assert archive_ann.read_only_hint is False
+    assert archive_ann.destructive_hint is True
 
 
 async def test_get_server_info_payload() -> None:
