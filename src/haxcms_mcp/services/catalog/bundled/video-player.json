@@ -77,6 +77,12 @@
       "description": "audio-description media URL"
     },
     {
+      "name": "accent-color",
+      "type": "string",
+      "required": false,
+      "description": "accent color (SimpleColors palette); deprecated developer setting in haxProperties but still rendered by the element"
+    },
+    {
       "name": "dark",
       "type": "boolean",
       "required": false,

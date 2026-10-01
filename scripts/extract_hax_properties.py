@@ -192,6 +192,11 @@ CURATED: dict[str, dict[str, Any]] = {
             _attr("hide-timestamps", "boolean", description=FLAG),
             _attr("hide-transcript", "boolean", description=FLAG),
             _attr("audio-description-source", description="audio-description media URL"),
+            _attr(
+                "accent-color",
+                description="accent color (SimpleColors palette); deprecated developer "
+                "setting in haxProperties but still rendered by the element",
+            ),
             _attr("dark", "boolean", description="inherited dark-mode toggle; " + FLAG),
         ],
         "example_html": (
@@ -573,13 +578,39 @@ OVERRIDES: dict[str, dict[str, Any]] = {
         ),
     },
     "stop-note": {
+        # icon is a real reflected attribute (CSS :host([icon=...]) + rendered simple-icon)
+        # but not a haxProperties settings entry — the gizmo icon is unrelated
+        "extra_attributes": [
+            _attr(
+                "icon",
+                description="icon override, e.g. stopnoteicons:stop-icon; derived from "
+                "status when omitted",
+            ),
+        ],
         "agent_notes": "the message body goes in a child with slot=message.",
     },
     "a11y-collapse": {
+        # expanded IS a configure entry but saveOptions.unsetAttributes strips it from
+        # editor saves; direct content writes persist it and the element honors it
+        "extra_attributes": [
+            _attr(
+                "expanded",
+                "boolean",
+                description="expand by default; the HAX editor strips it from its own "
+                "saves, direct content writes persist it; " + FLAG,
+            ),
+        ],
         "agent_notes": (
             "the trigger is a child with slot=heading; the revealed body is the default "
             "slot content."
         ),
+    },
+    "image-compare-slider": {
+        # title is rendered as an <h2> above the slider (source-verified) but is not a
+        # haxProperties settings entry
+        "extra_attributes": [
+            _attr("title", description="optional heading rendered above the slider"),
+        ],
     },
 }
 

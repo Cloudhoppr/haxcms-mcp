@@ -155,11 +155,26 @@ def _first_schema(data: Any) -> Any:
     return None
 
 
+def _union_by_name(
+    live: list[dict[str, Any]], bundled: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Live entries win per name; bundled-only names are appended (curated extras).
+
+    The bundled catalog carries source-verified attributes the live haxProperties
+    extraction cannot see (developer-group or editor-stripped settings like
+    video-player accent-color, a11y-collapse expanded); dropping them on a successful
+    live merge would make validation depend on whether a site is addressed.
+    """
+    names = {entry.get("name") for entry in live}
+    return [*live, *(entry for entry in bundled if entry.get("name") not in names)]
+
+
 def _merge_live(bundled: CatalogEntry | None, live: dict[str, Any], tag: str) -> CatalogEntry:
     """Non-empty live fields win; curated title/description/category/agent_notes stay.
 
     A live schema without a demoSchema must not wipe the bundled example, so empty
-    live values ("", None, [], {}) never overwrite a bundled one.
+    live values ("", None, [], {}) never overwrite a bundled one. Attributes and slots
+    merge as a union by name (live definition wins, bundled-only names are kept).
     """
     data: dict[str, Any] = bundled.model_dump() if bundled is not None else {}
     for field, value in live.items():
@@ -167,10 +182,14 @@ def _merge_live(bundled: CatalogEntry | None, live: dict[str, Any], tag: str) ->
             data[field] = value
     data["tag"] = tag
     if bundled is not None:
+        original = bundled.model_dump()
         for field in ("title", "description", "category", "agent_notes"):
             value = getattr(bundled, field)
             if value:
                 data[field] = value
+        for field in ("attributes", "slots"):
+            # union is a no-op when live did not replace the bundled list
+            data[field] = _union_by_name(data.get(field) or [], original[field])
     return CatalogEntry.model_validate(data)
 
 
@@ -295,7 +314,9 @@ class CatalogService:
         """Check tag + attribute names + enum values; returns the entry used.
 
         Native HTML tags return None (no schema to validate against); live-registry-only
-        tags return None when the merge yielded no attribute list.
+        tags return None when the merge yielded no attribute list. `None` and `False`
+        values are omitted from the rendered block (see build_block_html), so they carry
+        nothing to check and are skipped — the typed tools pass every parameter through.
         """
         clean = (tag or "").strip().lower()
         if clean in NATIVE_TAGS:
@@ -303,7 +324,11 @@ class CatalogService:
         entry = await self.get(clean, site=site)
         if not entry.attributes:
             return None
-        attrs = {kebab(str(name)): value for name, value in (attributes or {}).items()}
+        attrs = {
+            kebab(str(name)): value
+            for name, value in (attributes or {}).items()
+            if value is not None and value is not False
+        }
         known = {attribute.name for attribute in entry.attributes}
         unknown = sorted(
             name

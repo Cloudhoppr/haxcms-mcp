@@ -15,7 +15,9 @@ from haxcms_mcp.middleware import (
     ReadOnlyMiddleware,
     ToolLoggingMiddleware,
 )
+from haxcms_mcp.services.catalog.service import CatalogService
 from haxcms_mcp.tools.auth import register_auth_tools
+from haxcms_mcp.tools.blocks_typed import register_typed_block_tools
 from haxcms_mcp.tools.content import register_content_tools
 from haxcms_mcp.tools.outline import register_outline_tools
 from haxcms_mcp.tools.pages import register_pages_tools
@@ -33,10 +35,14 @@ def build_server(settings: Settings) -> FastMCP:
     mcp.add_middleware(ErrorTranslationMiddleware())
 
     client = HaxcmsClient(settings)
+    # one shared catalog: the content tools and the typed block tools use the same
+    # 10-minute live-merge cache
+    catalog = CatalogService(client)
     register_auth_tools(mcp, settings, client)
     register_sites_tools(mcp, settings, client)
     register_outline_tools(mcp, settings, client)
     register_pages_tools(mcp, settings, client)
-    register_content_tools(mcp, settings, client)
+    register_content_tools(mcp, settings, client, catalog)
+    register_typed_block_tools(mcp, settings, client, catalog)
 
     return mcp

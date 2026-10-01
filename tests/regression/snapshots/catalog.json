@@ -43,6 +43,13 @@
         "name": "tooltip-expanded",
         "required": false,
         "type": "string"
+      },
+      {
+        "description": "expand by default; the HAX editor strips it from its own saves, direct content writes persist it; boolean flag: emit name=name (presence is truth)",
+        "enum": null,
+        "name": "expanded",
+        "required": false,
+        "type": "boolean"
       }
     ],
     "category": "text",
@@ -681,6 +688,13 @@
         "name": "position",
         "required": false,
         "type": "number"
+      },
+      {
+        "description": "optional heading rendered above the slider",
+        "enum": null,
+        "name": "title",
+        "required": false,
+        "type": "string"
       }
     ],
     "category": "media",
@@ -1536,6 +1550,13 @@
         "name": "status",
         "required": false,
         "type": "string"
+      },
+      {
+        "description": "icon override, e.g. stopnoteicons:stop-icon; derived from status when omitted",
+        "enum": null,
+        "name": "icon",
+        "required": false,
+        "type": "string"
       }
     ],
     "category": "text",
@@ -1691,6 +1712,13 @@
         "description": "audio-description media URL",
         "enum": null,
         "name": "audio-description-source",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "description": "accent color (SimpleColors palette); deprecated developer setting in haxProperties but still rendered by the element",
+        "enum": null,
+        "name": "accent-color",
         "required": false,
         "type": "string"
       },

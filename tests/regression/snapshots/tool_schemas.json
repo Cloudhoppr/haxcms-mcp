@@ -1,4 +1,203 @@
 {
+  "add_accent_card": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add accent card"
+    },
+    "description": "Add an accent-card block: a colored callout card with slotted heading, optional\nsubheading and trusted-HTML body (`content_html`).\n\n`horizontal` lays image and content side by side; `flat` removes the shadow;\n`accent_color` is a SimpleColors palette name. Heading/subheading are escaped\nplain text. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "accent_color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "content_html": {
+          "type": "string"
+        },
+        "flat": {
+          "default": false,
+          "type": "boolean"
+        },
+        "heading": {
+          "type": "string"
+        },
+        "horizontal": {
+          "default": false,
+          "type": "boolean"
+        },
+        "image_alt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "image_src": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "subheading": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "heading",
+        "content_html"
+      ],
+      "type": "object"
+    }
+  },
+  "add_audio": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add audio"
+    },
+    "description": "Add an audio-player block (mp3 or any hosted audio URL); `title` becomes the\naccessible media-title. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
   "add_block": {
     "annotations": {
       "destructive_hint": false,
@@ -74,6 +273,1274 @@
       "type": "object"
     }
   },
+  "add_blockquote": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add blockquote"
+    },
+    "description": "Add a native <blockquote>; `text` is escaped plain text and `cite` a source\nURL. For the styled HAX pull-quote use add_styled_quote. Anchor/placement work as\nin add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cite": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "text"
+      ],
+      "type": "object"
+    }
+  },
+  "add_citation": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add citation"
+    },
+    "description": "Add a citation-element block: a rendered citation with schema.org markup.\n\n`license` is a Creative Commons key (by, by-sa, by-nd, by-nc, by-nc-sa,\nby-nc-nd); `scope` is sibling|parent (how the citation attaches to surrounding\ncontent). Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "creator": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "license": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "scope": {
+          "default": "sibling",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source_url": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "title",
+        "source_url"
+      ],
+      "type": "object"
+    }
+  },
+  "add_code_sample": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add code sample"
+    },
+    "description": "Add a code-sample block with syntax highlighting and a copy button.\n\nPass `code` verbatim — it is escaped automatically and stored inside\n`<template preserve-content>` so the sanitizer keeps whitespace and entities.\n`language`: javascript|html|css|xml|json|yaml|php. Anchor/placement work as in\nadd_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "code": {
+          "type": "string"
+        },
+        "copy_button": {
+          "default": true,
+          "type": "boolean"
+        },
+        "language": {
+          "default": "javascript",
+          "type": "string"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "code"
+      ],
+      "type": "object"
+    }
+  },
+  "add_collapse": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add collapse"
+    },
+    "description": "Add an a11y-collapse block: `heading` is the always-visible toggle text,\n`content_html` the collapsible body (trusted HTML).\n\n`expanded=True` opens it by default — the HAX editor strips that flag from its\nown saves, but content written through this server keeps it. Anchor/placement\nwork as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "content_html": {
+          "type": "string"
+        },
+        "expanded": {
+          "default": false,
+          "type": "boolean"
+        },
+        "heading": {
+          "type": "string"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "heading",
+        "content_html"
+      ],
+      "type": "object"
+    }
+  },
+  "add_cta": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add call to action"
+    },
+    "description": "Add a simple-cta block: a call-to-action button; `icon` is an iron-icon name\n(e.g. `link`), `hide_icon` drops it. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "hide_icon": {
+          "default": false,
+          "type": "boolean"
+        },
+        "icon": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "label": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "label",
+        "link"
+      ],
+      "type": "object"
+    }
+  },
+  "add_divider": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add divider"
+    },
+    "description": "Add a native <hr> horizontal rule: a visual section divider. Anchor/placement\nwork as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "type": "object"
+    }
+  },
+  "add_fill_in_the_blanks": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add fill in the blanks"
+    },
+    "description": "Add a fill-in-the-blanks block; `text_with_blanks` uses the element grammar —\n`[answer]` per blank, `[answer1~answer2]` for accepted alternatives. No title\nattribute in 26.8.1. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text_with_blanks": {
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "question",
+        "text_with_blanks"
+      ],
+      "type": "object"
+    }
+  },
+  "add_flash_card": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add flash card"
+    },
+    "description": "Add a flash-card block: click (or space) flips between `front` and `back`\n(inline HTML allowed); `image` sets the card's img-source for visual cards.\nAnchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "back": {
+          "type": "string"
+        },
+        "front": {
+          "type": "string"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "front",
+        "back"
+      ],
+      "type": "object"
+    }
+  },
+  "add_grid": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add grid"
+    },
+    "description": "Add a grid-plate block: `layout` is a column template — 1, 1-1, 2-1, 1-2, 3-1,\n1-3, 1-1-1, 2-1-1, 1-2-1, 1-1-2, 1-1-1-1 — and `columns` carries one trusted-HTML\nstring per column, slotted into col-1...col-N.\n\n`disable_responsive` keeps the layout fixed on small screens. Anchor/placement\nwork as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "columns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "disable_responsive": {
+          "default": false,
+          "type": "boolean"
+        },
+        "layout": {
+          "type": "string"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "layout",
+        "columns"
+      ],
+      "type": "object"
+    }
+  },
+  "add_heading": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add heading"
+    },
+    "description": "Add a native heading <h1>-<h6>; `level` defaults to 2 (the tutorial's H2).\n`text` is escaped plain text — for headings containing links use add_block or\nreplace_block. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "level": {
+          "default": 2,
+          "type": "integer"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "text"
+      ],
+      "type": "object"
+    }
+  },
+  "add_image": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add image"
+    },
+    "description": "Add a media-image block: the tutorial image, with optional caption/citation.\n\n`source` is a site-relative path (`files/...`) or an absolute URL; `alt` is\nrequired by the element. Flags: `card` (card treatment), `box` (drop shadow),\n`round` (circular crop). `size`: small|wide; `offset`: none|wide|narrow (margin\nbleed); `link` wraps the image in an anchor. Anchor/placement work as in\nadd_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "alt": {
+          "type": "string"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "box": {
+          "default": false,
+          "type": "boolean"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "card": {
+          "default": false,
+          "type": "boolean"
+        },
+        "citation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "link": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "offset": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "round": {
+          "default": false,
+          "type": "boolean"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "size": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "source",
+        "alt"
+      ],
+      "type": "object"
+    }
+  },
+  "add_image_compare": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add image compare slider"
+    },
+    "description": "Add an image-compare-slider block: drag-handle before/after comparison of two\nimages; `title` renders as a heading above the slider. Anchor/placement work as\nin add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "bottom_alt": {
+          "type": "string"
+        },
+        "bottom_src": {
+          "type": "string"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "top_alt": {
+          "type": "string"
+        },
+        "top_src": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "top_src",
+        "bottom_src",
+        "top_alt",
+        "bottom_alt"
+      ],
+      "type": "object"
+    }
+  },
+  "add_image_gallery": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add image gallery"
+    },
+    "description": "Add an image-gallery block: a lightbox gallery of media-image children.\n\n`images` is a list of `{src, alt, caption}` dicts (caption optional); each entry\nbecomes one `<media-image>` child — the gallery root takes no attributes here.\nAnchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "images": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "images"
+      ],
+      "type": "object"
+    }
+  },
+  "add_learning_component": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add learning component"
+    },
+    "description": "Add a learning-component block: a UDL-aligned wrapper tagging `content_html`\n(trusted HTML) with a learning purpose.\n\n`kind` is one of the element's type values — objectives, connection, knowledge,\nstrategy, discuss, listen, make, observe, present, read, reflect, research,\nwatch, write, content, assessment, quiz, submission, lesson, module, task,\nactivity, project, practice, unit (get_block_schema lists them all). Set `title`\nat creation: the element overwrites title/icon when its type changes later.\nAnchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "content_html": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "kind",
+        "title",
+        "content_html"
+      ],
+      "type": "object"
+    }
+  },
+  "add_license": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add license"
+    },
+    "description": "Add a license-element block: a Creative Commons badge.\n\n`license`: by|by-sa|by-nd|by-nc|by-nc-sa|by-nc-nd; `author` renders as the\nelement's creator attribute; `more_label` customizes the derived link text.\nAnchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "author": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "license": {
+          "default": "by-sa",
+          "type": "string"
+        },
+        "more_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "type": "object"
+    }
+  },
   "add_link": {
     "annotations": {
       "destructive_hint": false,
@@ -133,6 +1600,1721 @@
         "anchor",
         "text",
         "url"
+      ],
+      "type": "object"
+    }
+  },
+  "add_list": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add list"
+    },
+    "description": "Add a native <ul> — or <ol> with `ordered=True`; `items` are inline-HTML\nstrings, one per <li>. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "items": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ordered": {
+          "default": false,
+          "type": "boolean"
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "items"
+      ],
+      "type": "object"
+    }
+  },
+  "add_mark_the_words": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add mark the words"
+    },
+    "description": "Add a mark-the-words block: `text` is the statement (plain text) and\n`correct_words` lists the words that must be selected — each renders as a flagged\ninput the element matches against the statement. No title attribute in 26.8.1.\nAnchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "correct_words": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text": {
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "question",
+        "text",
+        "correct_words"
+      ],
+      "type": "object"
+    }
+  },
+  "add_markdown_block": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add markdown block"
+    },
+    "description": "Add an md-block block: Markdown rendered by the element — pass inline\n`markdown` OR a `source_url` to fetch from, exactly one. Anchor/placement work as\nin add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "markdown": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "type": "object"
+    }
+  },
+  "add_matching_question": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add matching question"
+    },
+    "description": "Add a matching-question block; `pairs` is a list of two-item lists\n`[prompt, match]` — prompts are flagged correct, matches form the shuffle pool.\nNo title attribute in 26.8.1. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "pairs": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "question",
+        "pairs"
+      ],
+      "type": "object"
+    }
+  },
+  "add_multiple_choice": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add multiple choice"
+    },
+    "description": "Add a multiple-choice block: a self-graded checkbox question.\n\n`answers` is a list of `{label, correct}` dicts — each entry with a truthy\n`correct` is a right answer. `single=True` switches to one-answer mode\n(single-option flag); `randomize` shuffles at display time. The element has NO\ntitle attribute in 26.8.1 — passing one fails validation with the known list.\nAnchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "answers": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "randomize": {
+          "default": false,
+          "type": "boolean"
+        },
+        "single": {
+          "default": false,
+          "type": "boolean"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "question",
+        "answers"
+      ],
+      "type": "object"
+    }
+  },
+  "add_page_section": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add page section"
+    },
+    "description": "Add a page-section block: a full-bleed themed section wrapping `content_html`\n(trusted HTML).\n\n`image` sets a background image; `full` makes the section full-height; `filter`\ndims the background behind content. NOTE: 26.8.1's page-section has no\naccent-color attribute — passing `accent_color` fails validation; style through\n`image`, the site theme, or the preset/bg attributes (see get_block_schema).\nAnchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "accent_color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "content_html": {
+          "type": "string"
+        },
+        "filter": {
+          "default": false,
+          "type": "boolean"
+        },
+        "full": {
+          "default": false,
+          "type": "boolean"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "content_html"
+      ],
+      "type": "object"
+    }
+  },
+  "add_paragraph": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add paragraph"
+    },
+    "description": "Add a native <p> paragraph; `text_or_html` may carry inline markup (<em>,\n<strong>, <a>, ...) — it is parsed as HTML, not escaped. Anchor/placement work as\nin add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text_or_html": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "text_or_html"
+      ],
+      "type": "object"
+    }
+  },
+  "add_placeholder": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add placeholder"
+    },
+    "description": "Add a place-holder block: the dashed stand-in the tutorial drops for media to\ncome.\n\n`kind`: text|document|audio|video|image|math (26.8.1's enum — Appendix B's old\n`code` value no longer exists and fails validation); `text` is the label shown\ninside. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "kind": {
+          "default": "image",
+          "type": "string"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "type": "object"
+    }
+  },
+  "add_self_check": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add self check"
+    },
+    "description": "Add a self-check block: a question whose answer reveals on click — self-\nassessment only, nothing is graded or recorded.\n\n`question_html` goes into the question slot, `answer_html` into the default slot\n(both trusted HTML); `accent_color`: primary|accent|success|warning|error|info.\nAnchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "accent_color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "alt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "answer_html": {
+          "type": "string"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "question_html": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "title",
+        "question_html",
+        "answer_html"
+      ],
+      "type": "object"
+    }
+  },
+  "add_short_answer": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add short answer question"
+    },
+    "description": "Add a short-answer-question block; `answers` lists every accepted free-text\nanswer (all flagged correct, matched case-sensitively). No title attribute in\n26.8.1. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "answers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "question",
+        "answers"
+      ],
+      "type": "object"
+    }
+  },
+  "add_sorting_question": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add sorting question"
+    },
+    "description": "Add a sorting-question block; `ordered_items` is the list in its CORRECT order\n— the element shuffles them at display time. No title attribute in 26.8.1.\nAnchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ordered_items": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "question",
+        "ordered_items"
+      ],
+      "type": "object"
+    }
+  },
+  "add_stop_note": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add stop note"
+    },
+    "description": "Add a stop-note block: the red attention banner for must-read warnings.\n\n`content_html` is the trusted-HTML message body (slot=message); `icon` overrides\nthe status-derived icon (e.g. `stopnoteicons:stop-icon`); `url` adds a learn-more\nlink. For softer callouts prefer accent-card or self-check. Anchor/placement work\nas in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "content_html": {
+          "type": "string"
+        },
+        "icon": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "title",
+        "content_html"
+      ],
+      "type": "object"
+    }
+  },
+  "add_styled_quote": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add styled quote"
+    },
+    "description": "Add a block-quote block: the STYLED HAX pull-quote (distinct from the native\nadd_blockquote) — `quote` is the quote text/HTML, `citation` its source, `image`\nan optional speaker portrait. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "citation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "quote": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "quote"
+      ],
+      "type": "object"
+    }
+  },
+  "add_table": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add table"
+    },
+    "description": "Add a native <table>; `rows` are lists of cell inline-HTML strings (keep rows\nequal length). With `header=True` the first row renders as <th> headings inside\n<thead>, the rest as <td> inside <tbody>. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "header": {
+          "default": true,
+          "type": "boolean"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "rows"
+      ],
+      "type": "object"
+    }
+  },
+  "add_tagging_question": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add tagging question"
+    },
+    "description": "Add a tagging-question block: `options` is a list of `{label, correct}` dicts —\ncorrect labels are the answer key, all labels render as the tag pool. No title\nattribute in 26.8.1. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "options": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "question",
+        "options"
+      ],
+      "type": "object"
+    }
+  },
+  "add_timeline": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add timeline"
+    },
+    "description": "Add an lrndesign-timeline block: a vertical timeline.\n\n`events` is a list of `{heading, details_html, image}` dicts, serialized to the\nelement's JSON events attribute (as heading/details/imagesrc) — the element\nrenders from the attribute, not from children. Anchor/placement work as in\nadd_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "events": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "title",
+        "events"
+      ],
+      "type": "object"
+    }
+  },
+  "add_true_false": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add true/false question"
+    },
+    "description": "Add a true-false-question block; `answer` is the correct choice — it renders\ntwo checkbox inputs (True/False) with the right one flagged `correct`. No title\nattribute exists in 26.8.1. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "answer": {
+          "type": "boolean"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "question",
+        "answer"
+      ],
+      "type": "object"
+    }
+  },
+  "add_video": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add video"
+    },
+    "description": "Add a video-player block: YouTube/Vimeo/Kaltura watch URLs or direct mp4/webm.\n\n`title` becomes the accessible media-title; `start_time`/`end_time` are seconds;\n`thumbnail` overrides the preview image; `accent_color` is a SimpleColors palette\nname. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "accent_color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "end_time": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "hide_transcript": {
+          "default": false,
+          "type": "boolean"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "type": "string"
+        },
+        "start_time": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "thumbnail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  "add_vocab_term": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add vocab term"
+    },
+    "description": "Add a vocab-term block: an inline popover definition for `term`.\n\n`definition_html` lands in the element's information attribute (markup OK);\n`links` is an optional list of `{title, href}` dicts serialized as the element's\nJSON attribute. PLAN spells the default `[]`; None means the same thing and keeps\nthe linter's mutable-default rule. Anchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "definition_html": {
+          "type": "string"
+        },
+        "links": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "term": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "term",
+        "definition_html"
+      ],
+      "type": "object"
+    }
+  },
+  "add_wikipedia_query": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Add Wikipedia query"
+    },
+    "description": "Add a wikipedia-query block: a live Wikipedia result panel for `search`.\nAnchor/placement work as in add_block.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "hide_title": {
+          "default": false,
+          "type": "boolean"
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "page": {
+          "type": "string"
+        },
+        "placement": {
+          "default": "append",
+          "type": "string"
+        },
+        "search": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "page",
+        "search"
       ],
       "type": "object"
     }

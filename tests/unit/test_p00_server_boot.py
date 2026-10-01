@@ -53,10 +53,47 @@ async def test_server_lists_the_registered_tools() -> None:
     by_name = {t.name: t for t in tools}
     # Phase 1 registers the four session tools (PLAN T1.7); Phase 2 the nine site tools
     # (T2.4); Phase 3 the sixteen outline and page tools (T3.5); Phase 4 the twelve
-    # content tools (T4.5) — 41 in total.
+    # content tools and the 37 typed block tools (T4.5) — 78 in total.
     assert sorted(by_name) == [
+        "add_accent_card",
+        "add_audio",
         "add_block",
+        "add_blockquote",
+        "add_citation",
+        "add_code_sample",
+        "add_collapse",
+        "add_cta",
+        "add_divider",
+        "add_fill_in_the_blanks",
+        "add_flash_card",
+        "add_grid",
+        "add_heading",
+        "add_image",
+        "add_image_compare",
+        "add_image_gallery",
+        "add_learning_component",
+        "add_license",
         "add_link",
+        "add_list",
+        "add_mark_the_words",
+        "add_markdown_block",
+        "add_matching_question",
+        "add_multiple_choice",
+        "add_page_section",
+        "add_paragraph",
+        "add_placeholder",
+        "add_self_check",
+        "add_short_answer",
+        "add_sorting_question",
+        "add_stop_note",
+        "add_styled_quote",
+        "add_table",
+        "add_tagging_question",
+        "add_timeline",
+        "add_true_false",
+        "add_video",
+        "add_vocab_term",
+        "add_wikipedia_query",
         "archive_site",
         "clone_site",
         "create_page",
@@ -222,6 +259,26 @@ async def test_content_tool_annotations() -> None:
         assert tool_ann is not None, name
         assert tool_ann.read_only_hint is False, name
         assert tool_ann.destructive_hint is True, name
+
+
+async def test_typed_block_tool_annotations() -> None:
+    """Phase 4 typed add_<block> tools (PLAN annotation matrix): every call appends a new
+    block — not read-only, not destructive, and repeating it is NOT idempotent."""
+    mcp = build_server(_settings())
+    async with Client(mcp) as client:
+        tools = await client.list_tools()
+    typed = [
+        tool
+        for tool in tools
+        if tool.name.startswith("add_") and tool.name not in {"add_block", "add_link"}
+    ]
+    assert len(typed) == 37
+    for tool in typed:
+        ann = tool.annotations
+        assert ann is not None, tool.name
+        assert ann.read_only_hint is False, tool.name
+        assert ann.destructive_hint is False, tool.name
+        assert ann.idempotent_hint is False, tool.name
 
 
 async def test_get_server_info_payload() -> None:

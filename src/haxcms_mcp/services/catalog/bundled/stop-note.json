@@ -27,6 +27,12 @@
         "success",
         "info"
       ]
+    },
+    {
+      "name": "icon",
+      "type": "string",
+      "required": false,
+      "description": "icon override, e.g. stopnoteicons:stop-icon; derived from status when omitted"
     }
   ],
   "slots": [

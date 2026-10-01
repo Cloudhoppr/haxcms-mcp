@@ -39,6 +39,12 @@
       "type": "string",
       "required": false,
       "description": "Tooltip for the expand/collapse button when expanded."
+    },
+    {
+      "name": "expanded",
+      "type": "boolean",
+      "required": false,
+      "description": "expand by default; the HAX editor strips it from its own saves, direct content writes persist it; boolean flag: emit name=name (presence is truth)"
     }
   ],
   "slots": [

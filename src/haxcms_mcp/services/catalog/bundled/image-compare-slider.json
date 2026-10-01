@@ -51,6 +51,12 @@
       "type": "number",
       "required": false,
       "description": "Starting position from 0 to 100."
+    },
+    {
+      "name": "title",
+      "type": "string",
+      "required": false,
+      "description": "optional heading rendered above the slider"
     }
   ],
   "slots": [],

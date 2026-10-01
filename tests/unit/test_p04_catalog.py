@@ -279,6 +279,16 @@ async def test_validate_required_not_enforced() -> None:
     assert entry is not None
 
 
+async def test_validate_skips_omitted_values() -> None:
+    """None/False are omitted from the rendered block (build_block_html), so they carry
+    nothing to check — the typed tools pass every parameter through as a dict."""
+    service = CatalogService()
+    entry = await service.validate(
+        "media-image", {"source": "files/a.png", "size": None, "card": False, "sourc": None}
+    )
+    assert entry is not None and entry.tag == "media-image"
+
+
 async def test_validate_without_attributes_returns_entry() -> None:
     entry = await CatalogService().validate("self-check")
     assert isinstance(entry, CatalogEntry)
@@ -421,12 +431,15 @@ async def test_live_merge_blocks_route() -> None:
 
     assert blocks_route.call_count == 1
     assert schemas_route.call_count == 0  # blocks route answered; no fallback
-    # live schema fields win ...
-    assert [attribute.name for attribute in entry.attributes] == ["live-attr", "mode"]
+    # live definitions win per name, bundled-only names survive the union ...
+    names = [attribute.name for attribute in entry.attributes]
+    bundled_names = {attribute.name for attribute in bundled.attributes}
+    assert names[:2] == ["live-attr", "mode"]
+    assert set(names) == {"live-attr", "mode"} | bundled_names
     assert entry.attributes[1].enum == ["a", "b"]
-    assert [slot.model_dump() for slot in entry.slots] == [
-        {"name": "default", "description": "Live body"}
-    ]
+    slots = {slot.name: slot.description for slot in entry.slots}
+    assert slots["default"] == "Live body"  # the live definition of a shared slot wins
+    assert set(slots) == {"default", "question"}  # the bundled-only slot survives
     # ... but curated text fields and the bundled example stay (live has no demoSchema)
     assert entry.title == bundled.title == "Self Check"
     assert entry.description == bundled.description
@@ -447,7 +460,7 @@ async def test_live_fallback_to_schemas_route() -> None:
         entry = await CatalogService(client).get("self-check", site="demo")
 
     assert schemas_route.call_count == 1
-    assert [attribute.name for attribute in entry.attributes] == ["live-attr", "mode"]
+    assert [attribute.name for attribute in entry.attributes][:2] == ["live-attr", "mode"]
 
 
 @respx.mock

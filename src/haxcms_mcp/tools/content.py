@@ -33,9 +33,14 @@ from haxcms_mcp.services.content.blocks import build_block_html
 from haxcms_mcp.tools._common import resolve_site, tool_annotations
 
 
-def register_content_tools(mcp: FastMCP, settings: Settings, client: HaxcmsClient) -> None:
-    """Register the twelve content tools on the FastMCP app."""
-    catalog = CatalogService(client)  # shared instance: one 10-minute live-merge cache
+def register_content_tools(
+    mcp: FastMCP, settings: Settings, client: HaxcmsClient, catalog: CatalogService
+) -> None:
+    """Register the twelve content tools on the FastMCP app.
+
+    `catalog` is the server-wide shared CatalogService (one live-merge cache), built in
+    server.py and also used by the typed block tools.
+    """
 
     @mcp.tool(annotations=tool_annotations("Get page content", read_only=True))
     async def get_page_content(page: str, site: str | None = None) -> dict[str, Any]:
