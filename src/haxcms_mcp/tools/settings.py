@@ -92,10 +92,12 @@ def register_settings_tools(mcp: FastMCP, settings: Settings, client: HaxcmsClie
         (e.g. `by-sa`, `by-nc`) and lands on the TOP-LEVEL manifest license (shared with
         the site license). `image` is a path/URL. At least one field is required.
         """
-        name = resolve_site(site, settings.default_site)
+        # `site_name`, not `name`: the local would shadow this tool's author-name
+        # parameter (the live suite caught the site machine name in metadata.author.name).
+        site_name = resolve_site(site, settings.default_site)
         result = await settings_service.update_author_info(
             client,
-            name,
+            site_name,
             license=license,
             name=name,
             email=email,

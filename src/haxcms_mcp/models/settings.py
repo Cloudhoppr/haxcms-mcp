@@ -328,9 +328,16 @@ class SiteSettings(BaseModel):
         git = site_meta.get("git")
         tags = site_meta.get("tags")
         updated = site_meta.get("updated")
-        # `items` is the full page outline (huge, and already served by list_pages).
+        # `items` is the full page outline (huge, and already served by list_pages). The
+        # JSON Outline Schema top-level `author` ("" on fresh sites — live-probed) shares
+        # the name of the parsed metadata.author view, so declared field names never
+        # reach **extras; harmless top-level extras like `location` are preserved.
         handled = {"id", "name", "title", "description", "license", "metadata", "items"}
-        extras = {key: value for key, value in manifest.items() if key not in handled}
+        extras = {
+            key: value
+            for key, value in manifest.items()
+            if key not in handled and key not in cls.model_fields
+        }
         return cls(
             id=manifest.get("id"),
             name=str(site_meta.get("name") or manifest.get("name") or ""),

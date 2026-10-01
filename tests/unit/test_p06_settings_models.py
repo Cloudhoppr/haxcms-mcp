@@ -192,3 +192,28 @@ def test_allowed_blocks_null_is_unrestricted() -> None:
     assert platform.allowed_blocks is None
     assert isinstance(platform.features, PlatformFeatures)
     assert platform.features.add_page is None
+
+
+def test_top_level_author_string_does_not_collide_with_author_view() -> None:
+    """Live-probed fresh site.json shape: the JSON Outline Schema top-level `author` is
+    "" — it must not collide with the parsed metadata.author view (integration caught
+    `TypeError: multiple values for keyword argument 'author'`). Harmless top-level
+    extras like `location` are preserved."""
+    manifest = {
+        "author": "",
+        "location": "pages",
+        "title": "Demo",
+        "metadata": {
+            "site": {"name": "demo", "git": {"vendor": "github", "branch": "gh-pages"}},
+            "author": {"name": "Ada"},
+            "platform": {"audience": "expert", "features": {}, "allowedBlocks": []},
+        },
+    }
+    settings = SiteSettings.from_manifest(manifest)
+    assert settings.author is not None
+    assert settings.author.name == "Ada"  # metadata.author wins the view
+    extras = settings.model_extra or {}
+    assert "author" not in extras  # collides with the declared field -> never an extra
+    assert extras.get("location") == "pages"
+    assert settings.git is not None and settings.git.branch == "gh-pages"
+    assert settings.platform is not None and settings.platform.allowed_blocks == []
