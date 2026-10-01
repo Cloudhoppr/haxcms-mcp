@@ -453,6 +453,27 @@ async def test_regenerate_alternate_formats_rejects_unknown() -> None:
     assert "service-worker" in (excinfo.value.hint or "")
 
 
+# --- configure_site_git --------------------------------------------------------------------------
+
+
+async def test_configure_site_git_always_unsupported() -> None:
+    # raises before any network use (client=None): 26.8.1 has NO git-settings route
+    with pytest.raises(HaxcmsMcpError) as excinfo:
+        await settings_service.configure_site_git(
+            None,  # type: ignore[arg-type]
+            "demo",
+            branch="gh-pages",
+            auto_push=True,
+            remote_url="git@example.invalid:org/demo.git",
+            vendor="github",
+        )
+    error = excinfo.value
+    assert error.code is ErrorCode.UNSUPPORTED
+    assert "git publishing settings" in error.message
+    assert "metadata.site.git" in (error.hint or "")
+    assert "get_site_settings" in (error.hint or "")
+
+
 # --- get_site_settings ---------------------------------------------------------------------------
 
 

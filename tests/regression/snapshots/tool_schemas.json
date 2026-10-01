@@ -3484,6 +3484,77 @@
       "type": "object"
     }
   },
+  "configure_site_git": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": false,
+      "title": "Configure site git"
+    },
+    "description": "Configure the site's git publishing settings — ALWAYS fails UNSUPPORTED.\n\nHAXcms NodeJS 26.8.1 exposes no API route that persists `metadata.site.git`\n(branch, autoPush, remote url, vendor): the reachable scoped manifest route\nwrites only title/homePageId/sw/forceUpgrade, and the full form route needs a\nform token no reachable endpoint mints. The Operator must edit\n`metadata.site.git` in the site's site.json on the server directly.\nget_site_settings still REPORTS the current git block (read-only).",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "auto_push": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "branch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "remote_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "vendor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    }
+  },
   "create_page": {
     "annotations": {
       "destructive_hint": false,

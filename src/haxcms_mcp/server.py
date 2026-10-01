@@ -24,6 +24,7 @@ from haxcms_mcp.tools.content import register_content_tools
 from haxcms_mcp.tools.files import register_files_tools
 from haxcms_mcp.tools.outline import register_outline_tools
 from haxcms_mcp.tools.pages import register_pages_tools
+from haxcms_mcp.tools.settings import register_settings_tools
 from haxcms_mcp.tools.sites import register_sites_tools
 
 
@@ -48,6 +49,7 @@ def build_server(settings: Settings) -> FastMCP:
     register_content_tools(mcp, settings, client, catalog)
     register_typed_block_tools(mcp, settings, client, catalog)
     register_files_tools(mcp, settings, client, catalog)
+    register_settings_tools(mcp, settings, client)
     register_catalog_resources(mcp, settings, client, catalog)
     register_site_resources(mcp, settings, client)
 

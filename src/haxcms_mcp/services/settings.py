@@ -612,3 +612,32 @@ async def regenerate_alternate_formats(
                 hint=f"valid formats: {', '.join(ALTERNATE_FORMATS)} (or omit for all)",
             )
     return await site_api.update_alternative_formats(client, site, fmt)
+
+
+async def configure_site_git(
+    client: HaxcmsClient,
+    site: str,
+    *,
+    branch: str | None = None,
+    auto_push: bool | None = None,
+    remote_url: str | None = None,
+    vendor: str | None = None,
+) -> SiteSettings:
+    """Git publishing settings (metadata.site.git) — UNSUPPORTED in HAXcms NodeJS 26.8.1.
+
+    Source-verified: the reachable scoped-details `PATCH site` path writes ONLY title /
+    homePageId / sw / forceUpgrade; `manifest-metadata-site-git-*` keys are not part of it,
+    and the full form path that would write them needs a `haxcms_form_token` that no
+    reachable route mints (`validateRequestToken` only passes when
+    `haxcms_middleware=node-cli`, which the served instance is not). So this always raises
+    UNSUPPORTED without touching the network; `get_site_settings` still REPORTS the current
+    git block. Live-probed in tests/integration/test_p06_git.py.
+    """
+    raise HaxcmsMcpError(
+        ErrorCode.UNSUPPORTED,
+        "HAXcms NodeJS 26.8.1 exposes no API for the git publishing settings",
+        hint=(
+            "the Operator must edit metadata.site.git in the site's site.json on the "
+            "server; get_site_settings reports the current git block"
+        ),
+    )

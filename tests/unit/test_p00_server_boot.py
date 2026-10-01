@@ -54,7 +54,7 @@ async def test_server_lists_the_registered_tools() -> None:
     # Phase 1 registers the four session tools (PLAN T1.7); Phase 2 the nine site tools
     # (T2.4); Phase 3 the sixteen outline and page tools (T3.5); Phase 4 the twelve
     # content tools and the 37 typed block tools (T4.5); Phase 5 the eight files tools
-    # (T5.6) — 86 in total.
+    # (T5.6); Phase 6 so far the git-publishing tool (T6.6) — 87 in total.
     assert sorted(by_name) == [
         "add_accent_card",
         "add_audio",
@@ -98,6 +98,7 @@ async def test_server_lists_the_registered_tools() -> None:
         "add_wikipedia_query",
         "archive_site",
         "clone_site",
+        "configure_site_git",
         "create_page",
         "create_pages",
         "create_site",
