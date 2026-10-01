@@ -27,3 +27,8 @@ class PageInfo(BaseModel):
     limit: int | None = None
     offset: int | None = None
     total: int | None = None
+
+
+def dump_model(model: BaseModel) -> dict[str, Any]:
+    """Serialise a model for a tool result (PLAN §5: mode="json", exclude_none=True)."""
+    return model.model_dump(mode="json", exclude_none=True)

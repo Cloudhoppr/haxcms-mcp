@@ -184,3 +184,25 @@ def unwrap(response: httpx.Response) -> Any:
     if "data" in body:
         return body["data"]
     return body
+
+
+def unwrap_dict(response: httpx.Response) -> dict[str, Any]:
+    """Like `unwrap`, but guarantees a dict (UPSTREAM_ERROR when `data` is not an object)."""
+    data = unwrap(response)
+    if not isinstance(data, dict):
+        raise HaxcmsMcpError(
+            ErrorCode.UPSTREAM_ERROR,
+            f"expected a JSON object in data from {response.request.url.path}",
+        )
+    return data
+
+
+def unwrap_list(response: httpx.Response) -> list[Any]:
+    """Like `unwrap`, but guarantees a list (UPSTREAM_ERROR when `data` is not an array)."""
+    data = unwrap(response)
+    if not isinstance(data, list):
+        raise HaxcmsMcpError(
+            ErrorCode.UPSTREAM_ERROR,
+            f"expected a JSON array in data from {response.request.url.path}",
+        )
+    return data
