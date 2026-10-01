@@ -12,7 +12,7 @@ Read order at the start of a Session: PLAN.md §0 → CONTEXT.md → this file �
 |---|---|---|---|---|
 | 0 | Scaffold and CI | done | `phase-00` | see tag |
 | 1 | Core client and session tools | done | `phase-01` | see tag |
-| 2 | Site lifecycle tools | not started | | |
+| 2 | Site lifecycle tools | done | `phase-02` | see tag |
 | 3 | Outline and page tools | not started | | |
 | 4 | Content and block tools | not started | | |
 | 5 | Files | not started | | |
@@ -76,6 +76,49 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
   `POST /_sites/{site}/x/api/v1/items` accepts the single-form payload
   `{site:{name}, node:{id:null,title,location:null,duplicate:null,contents}, parent:null,
   order:null, indent:null, description:"", metadata:null}` with bearer+site token.
+- (Phase 2, live probe) `POST sites` IGNORES a `site.title` key — the created site's title equals
+  its machine name. The response `data` is the site's first JSONOutlineSchemaItem; the ACTUAL
+  name is at `data.metadata.site.name` (also parseable from `location`/`slug`
+  `/_sites/<name>/index.html`). Blank create defaults observed: license `by-sa` honoured, server
+  fills `metadata.site.settings{lang:"en-US", publishPagesOn, canonical, pathauto}` and
+  `logo:"assets/banner.jpg"`.
+- (Phase 2, live probe) Duplicate `POST sites` name → 200: the server silently creates
+  `<name>-1` (no error, does NOT return the existing site). Services must read the created name
+  back from the response.
+- (Phase 2, live probe) `POST sites` with an unknown theme → 400
+  `{"status":400,"data":{"message":"Invalid theme supplied for site creation"}}` — but the site
+  is STILL registered afterwards (phantom `_sites/<name>` appears in list sites). The MCP
+  service validates against `GET themes` before the POST, so the phantom case is unreachable
+  through our tools.
+- (Phase 2, live probe, T2.5) `POST sites/{name}/clone` → `data:{detail:"/_sites/<new>",
+  name:"<new>"}` — the new Site Name is `data.name` (detail is a fallback). `POST
+  sites/{name}/archive` → `data:{name, archivedName, detail:"Site archived"}`; the archived
+  folder moves to `<root>/_archived/<name>` (asserted on disk in integration).
+- (Phase 2, live probe, T2.5) `GET sites/{name}` DOES include item counts: `metadata.pageCount`
+  (plus `created`/`updated` ISO strings) and
+  `links{self, clone, archive, download, downloadSkeleton, saveAsTemplate, siteApi}`.
+- (Phase 2, live probe, T2.5 → needed in Phase 8) `POST sites/{name}/download-skeleton` →
+  `data:{skeleton:{meta, site, build}}` — the skeleton JSON INLINE, not a link. `POST
+  sites/{name}/save-as-template` → `data:{saved:true, name, filename:"<name>.json",
+  path:"<root>\\_config\\user\\skeletons\\<name>.json", link:"/system/api//v1/skeletons/<name>"}`
+  — it DOES return a link (note the double-slash quirk); the body `name` param is ignored (the
+  site's own name is used); the saved skeleton then appears FIRST in `GET skeletons`.
+- (Phase 2, live probe) System `GET themes` and `GET skeletons` return LISTS (API-REF §3.5 said
+  "map"). Theme records carry BOTH `machineName` and `machine-name` plus
+  `element/path/thumbnail/category/hidden/priority/terrible/scope/enabled/supportedPalettes`.
+  Skeletons list = the 8 bundled records (`title/description/image/category/attributes/scope/
+  demo-url/skeleton-url/enabled`); `default-starter` (mentioned in API-REF §9) is NOT among them
+  in 26.8.1. Skeleton detail = `{meta{name, description, version, created, type, priority,
+  useCaseTitle, useCaseDescription, useCaseImage, category, tags, attributes}, site{name,
+  description, theme}, build{type, structure, items}}`.
+- (Phase 2, live probe) Site-level reads are ANONYMOUS (site-spec.yaml global `security: []`,
+  confirmed live): `GET /_sites/{site}/x/api/v1/site` (summary with
+  `counts{items, publishedItems, tags, regions, files}`, `language`, `basePath`, `theme`,
+  `updated`, links), `/themes` (ThemeCollection `{count, total, page, themes[]}` — active-theme
+  records add `supportedPalettes`), `/themes/active`, and `/items` (public outline).
+- (Phase 2, live probe) Create-from-skeleton `online-course-clean-one` → 5 pages: Syllabus,
+  Lesson 1, Lesson 1: Introduction, Lesson 1: Content, Lesson 1: Conclusion; the site's
+  description/theme/license come from the skeleton regardless of the requested values.
 
 ## Environment notes
 
@@ -105,6 +148,11 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
 - A killed integration run orphans the harness node process and its `%TEMP%\haxcms-mcp-rt-*` /
   `haxcms-mcp-home-*` dirs; clean them up manually (taskkill /F /T /PID + remove the specific
   dirs). The auto-mode classifier denies wildcard TEMP sweeps — name the resolved paths.
+- PowerShell `Start-Process -ArgumentList` splits `-m "integration or functional"` into separate
+  arguments (pytest dies with `file or directory not found: or`). Run pytest directly via the
+  PowerShell tool with run_in_background + `Out-File -Encoding utf8` instead.
+- pytest-timeout is NOT installed: a `--timeout=N` flag fails pytest argument parsing. Hangs are
+  guarded by the loop-scope settings (see above) and diagnosed with `uvx py-spy dump`.
 
 ---
 
@@ -307,3 +355,112 @@ site-token verification (differs per site; wrong-site token → 403).
   mode (API-REF §2.6 was already wrong once for listSites).
 - The permission classifier ("qwen ... temporarily unavailable") still times out intermittently;
   retry after a minute or do Write/Edit work meanwhile.
+
+---
+
+### Phase 2: Site lifecycle tools
+
+**Session:** shared with Phases 0-1 (compacted several times)
+**Completed:** 2026-09-30, tag `phase-02`, final commit: see tag
+
+**Built**
+- `src/haxcms_mcp/models/theme.py` — `Theme`: one flexible record covering both the system
+  registry shape (`element/path/thumbnail/category/hidden/priority/terrible/scope/enabled`) and
+  the site-level shape (`machineName/name/description/active/screenshot/supportedPalettes`);
+  machine-name fallback chain `machineName` → `machine-name` → `element`; string `category`
+  normalised to a list.
+- `src/haxcms_mcp/models/skeleton.py` — `SkeletonMeta` (maps BOTH the flat list record and the
+  detail `meta` object; `title` falls back to `useCaseTitle`; `image` to `useCaseImage`;
+  `demo-url`/`skeleton-url` → snake_case) and `Skeleton` (`meta`/`site`/`build`/`theme`,
+  tolerant of missing sections).
+- `src/haxcms_mcp/models/site.py` — added `SiteCounts`, `SiteSummary` (public `GET site`),
+  `SiteInfo` (`GET sites/{name}`, `page_count` property over `metadata.pageCount`) and
+  `SiteDetail` (the merged get_site view, plus an optional `warnings` list used by create/get);
+  `SiteListEntry.from_api` now strips the heavy nested site.json keys
+  (`theme/build/node/platform/metadata`) from list results but keeps scalars (author, license).
+- `src/haxcms_mcp/models/common.py` — `dump_model` (`mode="json"`, `exclude_none=True`): the
+  single place implementing the PLAN §5 result-serialisation convention.
+- `src/haxcms_mcp/client/system_api.py` — `site_info`, `create_site`, `clone_site`,
+  `archive_site`, `list_themes` (all bearer + user token), `list_skeletons`, `get_skeleton`
+  (bearer only) — exactly per the spec `security:` blocks.
+- `src/haxcms_mcp/client/site_api.py` — NEW module: `site_summary`, `list_site_themes`,
+  `active_theme`, all `auth="none"` (public reads; verified anonymous 200s).
+- `src/haxcms_mcp/client/envelope.py` — `unwrap_dict` / `unwrap_list` typed unwrappers
+  (UPSTREAM_ERROR on shape drift) keeping mypy strict honest about `data` shapes.
+- `src/haxcms_mcp/services/sites.py` — `validate_site_name` (tutorial hint verbatim: names
+  cannot contain spaces; use - or _), pure `build_home_item` / `build_create_payload` (injectable
+  item ids → deterministic goldens), `list_sites`, `get_site` (info+summary merge; summary
+  failure degrades to a warning), `create_site` (theme validated against the LIVE registry
+  before any POST; hidden allowed with warning; actual name read back from
+  `metadata.site.name`; title pass-through with an upstream-ignores warning),
+  `create_site_from_skeleton` (name defaults to the skeleton machine name), `clone_site`
+  (`data.name`, detail-path fallback, UPSTREAM_ERROR when neither), `archive_site`,
+  `list_themes`, `list_skeletons`, `get_skeleton`. Module docstring records every live quirk it
+  depends on.
+- `src/haxcms_mcp/tools/sites.py` — the nine tools, registered in `server.py` (13 tools total):
+  reads read-only-annotated; create/create-from-skeleton/clone `idempotent=False`;
+  `archive_site` `destructive=True`. Docstrings are the agent manual (machine-name rules,
+  duplicate-name warning contract, CC license codes, skeleton categories as journey types,
+  archive semantics). `site` args fall back to the Default Site via `resolve_site`.
+- `tests/harness/site_reads.py` — `public_items` / `public_titles`: anonymous outline reads used
+  by the live suites until Phase 3 page tools exist.
+
+**Tests added**
+- unit: `test_p02_site_name_validation.py` (22), `test_p02_create_payload.py` (10),
+  `test_p02_models.py` (11), `test_p02_sites_service.py` (20, respx mocks built from the probe
+  shapes) — 63 new; `test_p00_server_boot.py` gained the 13-tool registry assertion and the
+  Phase 2 annotation-matrix test.
+- integration: `test_p02_sites.py` (5) — full lifecycle incl. the `_archived/` disk assertion,
+  duplicate `<name>-1` behaviour, invalid theme rejected before any write (no phantom),
+  theme/skeleton reads, skeleton journey pages.
+- regression: `test_p02_snapshots.py` + `create_site_payloads.json` (blank defaults / blank
+  custom / from-skeleton goldens); `tool_schemas.json` regenerated for 13 tools.
+- functional: `test_p02_new_user_journey.py` (1) — the Appendix D tutorial through Tool calls
+  only, ending with clone + archive through the destructive tool path.
+- full rerun: `uv run pytest -m "not e2e"` → 163 passed in ~38s (live suites ~25s warm).
+
+**Verified facts** — see the cumulative list (all Phase 2 bullets): title ignored on create;
+duplicate → silent `-1` suffix; invalid-theme 400 + phantom registration; clone `data.name`;
+archive → `_archived/`; `GET sites/{name}` has `metadata.pageCount`; download-skeleton inline
+skeleton (Phase 8); save-as-template link + double-slash quirk (Phase 8); themes/skeletons are
+lists; site-level reads anonymous; skeleton create → 5 course pages, skeleton wins.
+
+**Deviations from PLAN.md**
+- `McpTestClient.call`/`call_error` now take the tool name POSITIONAL-ONLY — `create_site`'s
+  `name` argument collided with the harness keyword signature (TypeError in the functional run).
+- `get_site` degrades a failing public-summary read into a `warnings` entry instead of failing
+  (the system info alone is still a useful answer); `create_site` surfaces hidden-theme,
+  duplicate-name and ignored-title situations the same way.
+- `create_site` sends `site.title` verbatim when given but warns that upstream ignores it;
+  setting a real title needs the Phase 6 PATCH-site (update_site_info) route — until then the
+  title parameter is effectively decorative.
+- `license=None` (PLAN signature) resolves to `by-sa` in the service — the value the dashboard
+  sends on create (API-REF §3.3 payload).
+- `unwrap_dict`/`unwrap_list` extend the envelope module (not named in PLAN §2.3) — required for
+  mypy strict and for the list-shaped themes/skeletons responses.
+- `clone_site` returns `{name, site}` and `archive_site` `{name, archived_name, detail}`
+  (snake_case-normalised) instead of the raw upstream dicts; `list_sites` tool returns
+  `{count, sites}` wrappers for cheap agent sanity checks.
+- PLAN's blank-payload default `first_page_content="<p></p>"` kept exactly (an earlier
+  friendlier default was reverted before commit to stay PLAN-exact).
+
+**Known gaps / follow-ups**
+- `client/site_api.py`'s `list_site_themes` / `active_theme` helpers exist but are not exposed
+  as tools — PLAN's Phase 2 inventory has only the system-level `list_themes`; revisit in
+  Phase 6 (settings) if a site-theme tool is wanted.
+- The upstream phantom-site quirk (invalid-theme 400 still registers the site) is only AVOIDED
+  by client-side validation; a raw 400 from a future code path could still leave one behind.
+- Site names are validated client-side but the server also accepts other characters; if a future
+  HAXcms relaxes machine names, `SITE_NAME_RE` is the single place to adjust.
+
+**Notes for the next Session**
+- The services/sites.py pattern is the template for Phases 3-4: pure payload builders (goldened)
+  + async service functions returning models/snake_case dicts + thin tools that `dump_model`.
+- Phase 3 writes (`POST/PATCH items`) need `auth="bearer+site"` with `site=` (per-site token
+  verified Phase 1); anonymous outline reads for test assertions live in
+  `tests/harness/site_reads.py`.
+- The PLAN §6.2 `site`/`page` conftest fixtures are still absent; Phase 2 used per-test unique
+  names + archive-in-finally (integration) and fixed tutorial names (functional, fresh instance
+  per session makes that safe). Phase 3 should finally add the `site` fixture.
+- Live-instance counts to remember: 16 themes, 8 bundled skeletons (no `default-starter`),
+  version self-reports 26.8.0.
