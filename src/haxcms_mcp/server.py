@@ -21,6 +21,7 @@ from haxcms_mcp.services.catalog.service import CatalogService
 from haxcms_mcp.tools.auth import register_auth_tools
 from haxcms_mcp.tools.blocks_typed import register_typed_block_tools
 from haxcms_mcp.tools.content import register_content_tools
+from haxcms_mcp.tools.converters import register_converter_tools
 from haxcms_mcp.tools.files import register_files_tools
 from haxcms_mcp.tools.imports import register_import_tools
 from haxcms_mcp.tools.outline import register_outline_tools
@@ -52,6 +53,7 @@ def build_server(settings: Settings) -> FastMCP:
     register_files_tools(mcp, settings, client, catalog)
     register_settings_tools(mcp, settings, client)
     register_import_tools(mcp, settings, client)
+    register_converter_tools(mcp, settings, client)
     register_catalog_resources(mcp, settings, client, catalog)
     register_site_resources(mcp, settings, client)
 

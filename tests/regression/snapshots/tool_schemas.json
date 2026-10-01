@@ -3555,6 +3555,347 @@
       "type": "object"
     }
   },
+  "convert_docx_to_html": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Convert DOCX to HTML"
+    },
+    "description": "Convert an uploaded .docx or .doc file to clean HTML.\n\n`source`: a path / URL / data: / base64: file (Sources convention), sent as the\nmultipart file part (Word document (.docx or .doc) to convert).\n\nReturns {text, mimetype=text/html}; upstream extras ride along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  "convert_docx_to_pdf": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Convert DOCX to PDF"
+    },
+    "description": "Convert an uploaded DOCX file to a PDF document.\n\nNEEDS CHROME on the HAXcms server (puppeteer-core; PUPPETEER_EXECUTABLE_PATH or a\nsystem Chrome) - without it the conversion fails upstream.\n`source`: a path / URL / data: / base64: file (Sources convention), sent as the\nmultipart file part (Word document (.docx) to convert to PDF).\n\nThe binary result is written under the Output Directory; returns {path, bytes,\nmimetype, filename}.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  "convert_html_to_docx": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Convert HTML to DOCX"
+    },
+    "description": "Convert HTML string to a DOCX document (returned as base64).\n\nDEVIATION from the vendored spec (source-verified): the 26.8.1 route accepts ONLY a\nmultipart .html/.htm file upload; the spec's JSON {html} body answers 400 'No file\nuploaded'.\n`source`: a path / URL / data: / base64: file (Sources convention), sent as the\nmultipart file part (file to convert).\n\nThe binary result is written under the Output Directory; returns {path, bytes,\nmimetype, filename}.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  "convert_html_to_md": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Convert HTML to Markdown"
+    },
+    "description": "Convert an HTML string to Markdown.\n\nJSON body fields:\n`html` (required): HTML string to convert.\n`type`: If set to 'link', the html value is treated as a URL to fetch.\n\nReturns {text, mimetype=text/markdown}; upstream extras ride along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "html": {
+          "type": "string"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "html"
+      ],
+      "type": "object"
+    }
+  },
+  "convert_html_to_pdf": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Convert HTML to PDF"
+    },
+    "description": "Convert HTML string to a PDF document (returned as base64).\n\nDEVIATION from the vendored spec (source-verified): multipart .html/.htm file upload\nonly (like convert_html_to_docx); `base` rides as a FORM field.\nNEEDS CHROME on the HAXcms server (puppeteer-core; PUPPETEER_EXECUTABLE_PATH or a\nsystem Chrome) - without it the conversion fails upstream.\n`source`: a path / URL / data: / base64: file (Sources convention), sent as the\nmultipart file part (file to convert).\n`base`: optional base URL for resolving relative links (FORM field; the server wants\nan http(s) URL and defaults to '/').\n\nThe binary result is written under the Output Directory; returns {path, bytes,\nmimetype, filename}.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  "convert_json_to_yaml": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Convert JSON to YAML"
+    },
+    "description": "Convert JSON to YAML.\n\nJSON body fields:\n`json` (required): JSON object or string to convert.\n`type`: If set to 'link', the json value is treated as a URL to fetch.\n\nReturns {text, mimetype=application/yaml}; upstream extras ride along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "json": {
+          "type": "string"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "json"
+      ],
+      "type": "object"
+    }
+  },
+  "convert_md_to_html": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Convert Markdown to HTML"
+    },
+    "description": "Convert a Markdown string to HTML.\n\nJSON body fields:\n`md` (required): Markdown string to convert.\n`type`: If set to 'link', the md value is treated as a URL to fetch.\n\nReturns {text, mimetype=text/html}; upstream extras ride along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "md": {
+          "type": "string"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "md"
+      ],
+      "type": "object"
+    }
+  },
+  "convert_pdf_to_html": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Convert PDF to HTML"
+    },
+    "description": "Convert an uploaded PDF file to semantic HTML.\n\n`source`: a path / URL / data: / base64: file (Sources convention), sent as the\nmultipart file part (PDF file to convert).\n\nReturns {text, mimetype=text/html}; upstream extras ride along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  "convert_pptx_to_html": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Convert PPTX to HTML"
+    },
+    "description": "Convert an uploaded PPTX file to HTML.\n\n`source`: a path / URL / data: / base64: file (Sources convention), sent as the\nmultipart file part (PowerPoint file (.pptx) to convert).\n\nReturns {text, mimetype=text/html}; the extracted slide images ride along in the\n`files` extra.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  "convert_pretty_html": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Pretty-print HTML"
+    },
+    "description": "Pretty-print an HTML string.\n\nJSON body fields:\n`html` (required): HTML string to format.\n`type`: If set to 'link', the html value is treated as a URL to fetch.\n\nReturns {text, mimetype=text/html}; upstream extras ride along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "html": {
+          "type": "string"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "html"
+      ],
+      "type": "object"
+    }
+  },
+  "convert_xlsx_to_csv": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Convert XLSX to CSV"
+    },
+    "description": "Convert an uploaded Excel file to CSV.\n\nDEVIATION from the vendored spec (source-verified): the sheet name rides as a QUERY\nparameter (?sheet=); an unknown sheet silently falls back to the first.\n`source`: a path / URL / data: / base64: file (Sources convention), sent as the\nmultipart file part (Excel file (.xlsx) to convert).\n`sheet`: optional sheet name to convert (QUERY parameter).\n\nReturns {text, mimetype=text/csv}; the sheetNames/selectedSheet extras ride along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "sheet": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  "convert_yaml_to_json": {
+    "annotations": {
+      "destructive_hint": false,
+      "idempotent_hint": true,
+      "open_world_hint": false,
+      "read_only_hint": true,
+      "title": "Convert YAML to JSON"
+    },
+    "description": "Convert YAML to JSON.\n\nJSON body fields:\n`yaml` (required): YAML string to convert.\n`type`: If set to 'link', the yaml value is treated as a URL to fetch.\n\nReturns {text, mimetype=application/json}; upstream extras ride along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "yaml": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "yaml"
+      ],
+      "type": "object"
+    }
+  },
   "create_page": {
     "annotations": {
       "destructive_hint": false,

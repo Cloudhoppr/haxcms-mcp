@@ -55,7 +55,7 @@ async def test_server_lists_the_registered_tools() -> None:
     # (T2.4); Phase 3 the sixteen outline and page tools (T3.5); Phase 4 the twelve
     # content tools and the 37 typed block tools (T4.5); Phase 5 the eight files tools
     # (T5.6); Phase 6 the eleven settings tools (T6.4); Phase 7 the three import tools
-    # (T7.5) — 100 in total.
+    # and the twelve generated converters (T7.4/T7.5) — 112 in total.
     assert sorted(by_name) == [
         "add_accent_card",
         "add_audio",
@@ -100,6 +100,18 @@ async def test_server_lists_the_registered_tools() -> None:
         "archive_site",
         "clone_site",
         "configure_site_git",
+        "convert_docx_to_html",
+        "convert_docx_to_pdf",
+        "convert_html_to_docx",
+        "convert_html_to_md",
+        "convert_html_to_pdf",
+        "convert_json_to_yaml",
+        "convert_md_to_html",
+        "convert_pdf_to_html",
+        "convert_pptx_to_html",
+        "convert_pretty_html",
+        "convert_xlsx_to_csv",
+        "convert_yaml_to_json",
         "create_page",
         "create_pages",
         "create_site",
@@ -373,6 +385,45 @@ async def test_settings_tool_annotations() -> None:
         assert tool_ann.read_only_hint is False, name
         assert tool_ann.destructive_hint is False, name
         assert tool_ann.idempotent_hint is True, name
+
+
+async def test_converter_tool_annotations() -> None:
+    """Phase 7 annotation matrix (PLAN T7.5): converters are read-only — they mutate
+    nothing on the Instance; binary results land in the LOCAL Output Directory."""
+    mcp = build_server(_settings())
+    async with Client(mcp) as client:
+        tools = await client.list_tools()
+    converters = [tool for tool in tools if tool.name.startswith("convert_")]
+    assert len(converters) == 12
+    for tool in converters:
+        ann = tool.annotations
+        assert ann is not None, tool.name
+        assert ann.read_only_hint is True, tool.name
+        assert ann.destructive_hint is False, tool.name
+        assert ann.idempotent_hint is True, tool.name
+
+
+async def test_converter_tool_schemas_hide_bound_params() -> None:
+    """The partial-bound client/settings never reach the schema; the spec-derived
+    parameters and their defaults do (ADR-0002)."""
+    mcp = build_server(_settings())
+    async with Client(mcp) as client:
+        tools = await client.list_tools()
+    by_name = {t.name: t for t in tools}
+
+    md_schema = by_name["convert_md_to_html"].input_schema
+    assert set(md_schema["properties"]) == {"md", "type"}
+    assert md_schema["required"] == ["md"]
+
+    pdf_schema = by_name["convert_html_to_pdf"].input_schema
+    assert set(pdf_schema["properties"]) == {"source", "base"}
+
+    docx_schema = by_name["convert_docx_to_html"].input_schema
+    assert set(docx_schema["properties"]) == {"source"}
+
+    # the generated docstrings become the tool descriptions, deviations included
+    assert "DEVIATION" in (by_name["convert_html_to_docx"].description or "")
+    assert "NEEDS CHROME" in (by_name["convert_docx_to_pdf"].description or "")
 
 
 async def test_configure_site_git_tool_raises_unsupported() -> None:

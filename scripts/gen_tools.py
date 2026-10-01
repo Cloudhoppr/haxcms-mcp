@@ -127,9 +127,11 @@ EXTRA_NOTES: dict[str, str] = {
     "pptxToHtml": "the extracted slide images ride along in the `files` extra",
 }
 
+# Deliberately NO `from __future__ import annotations` here: FastMCP resolves the
+# parameter annotations when it builds the tool schemas, and it evaluates a bound
+# functools.partial's annotations outside this module's namespace — real annotation
+# objects (Python 3.12 natively spells `str | None`) sidestep the NameError entirely.
 IMPORTS_BLOCK = """\
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any
 
