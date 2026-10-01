@@ -9,7 +9,8 @@ once already):
   routes upgrade visibility for authenticated callers (unpublished items; verified in
   siteRouteUtils.filterItemsForAnonymousAccess).
 * bearer + SITE token: `POST items`, `PATCH items/{idOrSlug}`, `DELETE items/{idOrSlug}`,
-  `PATCH site/outline`, `POST site/normalize-slugs`, and all three revision routes.
+  `PATCH site/outline`, `POST site/normalize-slugs`, all three revision routes, and all
+  five Phase 5 files routes (`GET/POST files`, `GET/PATCH/DELETE files/{uuid}`).
 
 Live facts these helpers encode (Phase 3 source reads, recorded in PROGRESS.md):
 
@@ -319,5 +320,94 @@ async def get_custom_element(client: HaxcmsClient, site: str, tag: str) -> dict[
     """GET custom-elements/{tag} -> the wc-registry entry (404 when the tag is unknown)."""
     response = await client.request(
         "GET", client.site_path(site, f"custom-elements/{quote(tag, safe='')}"), auth="bearer"
+    )
+    return unwrap_dict(response)
+
+
+# --- Phase 5: files (API-REF §6) ----------------------------------------------------------
+#
+# All five routes are bearer + SITE token per specs/site-spec.yaml (listFiles, createFile,
+# getFileByUuid, updateFileByUuid, deleteFileByUuid — each `security: [bearerAuth,
+# siteTokenHeader]`). Mutations are limited upstream to 500 per 5 minutes per user:site,
+# then 429 with Retry-After (the envelope mapper already surfaces RATE_LIMITED with the
+# retry-after appended).
+
+
+def _file_path(client: HaxcmsClient, site: str, uuid: str) -> str:
+    return client.site_path(site, f"files/{quote(uuid, safe='')}")
+
+
+async def list_files(
+    client: HaxcmsClient, site: str, *, params: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """GET files -> FileCollection `{count, total, page, files, orphans}`.
+
+    `params` carries the raw query keys (`filter.type`, `filter.extension`,
+    `filter.startsWith`, `filter.nameContains`, `filename`, `page.limit`, `page.offset`,
+    `sort`, `fields`). The route auto-indexes on-disk files missing from files.json
+    before returning, and flags records whose disk file is gone in `orphans`.
+    """
+    response = await client.request(
+        "GET", client.site_path(site, "files"), params=params, auth="bearer+site", site=site
+    )
+    return unwrap_dict(response)
+
+
+async def upload_file(
+    client: HaxcmsClient,
+    site: str,
+    *,
+    filename: str,
+    content: bytes,
+    mimetype: str,
+    node_id: str | None = None,
+) -> dict[str, Any]:
+    """POST files (multipart) -> `{file: {path, fullUrl, url, type, name, size, uuid, ...}}`.
+
+    The multipart field is `file-upload` (the server also accepts `upload` or `file`);
+    `nodeId` optionally associates the upload with a page. Upload limit defaults to 50mb
+    (`HAXCMS_UPLOAD_LIMIT`); extensions are gated server-side by
+    `HAXCMSFile.ALLOWED_MIME_BY_EXTENSION` — expect 400 on mismatch.
+    """
+    files = {"file-upload": (filename, content, mimetype)}
+    data = {"nodeId": node_id} if node_id else None
+    response = await client.request(
+        "POST",
+        client.site_path(site, "files"),
+        data=data,
+        files=files,
+        auth="bearer+site",
+        site=site,
+    )
+    return unwrap_dict(response)
+
+
+async def get_file(client: HaxcmsClient, site: str, uuid: str) -> dict[str, Any]:
+    """GET files/{uuid} -> one FileRecord (404 -> NOT_FOUND)."""
+    response = await client.request(
+        "GET", _file_path(client, site, uuid), auth="bearer+site", site=site
+    )
+    return unwrap_dict(response)
+
+
+async def update_file(
+    client: HaxcmsClient, site: str, uuid: str, operation: str, **args: Any
+) -> dict[str, Any]:
+    """PATCH files/{uuid} `{operation, newName?, size?, level?}` -> the operation result.
+
+    Operations: rename, convert-jpg, scale, sepia, black-and-white, rotate-90, compress
+    (`level`: light|medium|heavy|maximum), duplicate. Delete uses its own route.
+    """
+    body: dict[str, Any] = {"operation": operation, **args}
+    response = await client.request(
+        "PATCH", _file_path(client, site, uuid), json=body, auth="bearer+site", site=site
+    )
+    return unwrap_dict(response)
+
+
+async def delete_file(client: HaxcmsClient, site: str, uuid: str) -> dict[str, Any]:
+    """DELETE files/{uuid} -> the deletion result (no request body)."""
+    response = await client.request(
+        "DELETE", _file_path(client, site, uuid), auth="bearer+site", site=site
     )
     return unwrap_dict(response)
