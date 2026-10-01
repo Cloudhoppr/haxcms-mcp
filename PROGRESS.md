@@ -13,7 +13,7 @@ Read order at the start of a Session: PLAN.md §0 → CONTEXT.md → this file �
 | 0 | Scaffold and CI | done | `phase-00` | see tag |
 | 1 | Core client and session tools | done | `phase-01` | see tag |
 | 2 | Site lifecycle tools | done | `phase-02` | see tag |
-| 3 | Outline and page tools | not started | | |
+| 3 | Outline and page tools | done | `phase-03` | see tag |
 | 4 | Content and block tools | not started | | |
 | 5 | Files | not started | | |
 | 6 | Site settings | not started | | |
@@ -119,6 +119,61 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
 - (Phase 2, live probe) Create-from-skeleton `online-course-clean-one` → 5 pages: Syllabus,
   Lesson 1, Lesson 1: Introduction, Lesson 1: Content, Lesson 1: Conclusion; the site's
   description/theme/license come from the skeleton regardless of the requested values.
+- (Phase 3, source + live) Single `POST items` (createNode.js → `itemFromParams`, HAXCMS.js
+  L1815): honours `node.id`, REPLACES `metadata` wholesale (published/tags ride in the POST
+  body) and always slugifies from title/location, ignoring any slug (an explicit slug needs the
+  `setSlug` follow-up). **Omitting `order` leaves the prototype default 0 — every un-ordered
+  single create ties and the outline falls back to title order (caught by the live suites)** —
+  so `create_page` computes the append position (max sibling order + 1) itself.
+- (Phase 3, source) Bulk `POST items` (`addPage`, HAXCMS.js L980): honours client-supplied ids
+  (parents can be calculated ahead of time), defaults `order` to `manifest.items.length`
+  (append), defaults missing slugs to `welcome`, passes `content || contents`, and with a
+  string `parent` sets `page.indent` to whatever was sent (absent → the manifest omits indent).
+  Response `data` is only the LAST created item (absent when every entry is `delete:true`);
+  one git commit per batch; `delete:true` entries are skipped — `create_pages` therefore fills
+  ids/slugs client-side and re-lists the manifest to return every created page in input order.
+- (Phase 3, source) `PATCH site/outline` (saveOutline.js): items OMITTED from the payload are
+  NOT deleted (only an explicit `delete:true` entry removes a page) but keep their old order —
+  always send the COMPLETE manifest; response `data = {items: <full manifest>}`; Pathauto
+  regenerates the slugs of every SENT item unless `metadata.overridePathauto`; client-supplied
+  ids are remapped through an itemMap; `order` comes from `item.order` else the array index;
+  `location` is server-controlled (under `pages/`); 403 without the outlineDesigner feature.
+- (Phase 3, source + live) `setSlug` sets `metadata.overridePathauto=true`; `setTitle`
+  regenerates the slug only while Pathauto is on AND overridePathauto is unset → an explicit
+  slug STICKS across later title changes (asserted live); slug changes cascade to descendants;
+  the `setOverridePathauto` operation's field is `overridePathauto` (boolean).
+- (Phase 3, source + live) `setParent` defaults `order` to 0 (nodeDetailOperations.js) — the
+  service appends (max sibling order + 1) when order is omitted. `moveUp`/`moveDown` swap order
+  with the adjacent sibling; `indent` reparents under the PREVIOUS sibling; `outdent` moves to
+  the grandparent right after the parent — all four verified in the live outline suite.
+- (Phase 3, source) `GET items` filters (siteRouteUtils.js filterItems L1265-1310 +
+  parseBooleanFromInput L450-485): `filter.published` accepts 1/true/yes/on and 0/false/no/off;
+  `filter.depth` applies ONLY together with `filter.ancestor`; `filter.tags` is CSV matched
+  lowercase; `filter.parent` is an exact string match against `item.parent` (an ID — resolve
+  slugs first). Pagination: default `page.limit` 25, MAX 200 → callers must paginate.
+- (Phase 3, source, T3.6) pageType values from the page boilerplate dirs: `default, course,
+  lesson, glossary, collection, portfolio, init`; the Notion importer additionally uses
+  `reading/discuss/activity/connection`.
+- (Phase 3, source) Revisions (revisions.js): `{revisionId}` must be a 7-64 char hex git hash
+  (revision NUMBERS are rejected); the list clamps `page.limit` to 1-200, newest first; restore
+  takes no body, lands as a NEW commit and returns `{nodeId, nodeSlug, nodeTitle,
+  restoredFromHash, jsonVariantLocation, hasItemMetadata, itemMetadataRestored, links}`.
+- (Phase 3, source + live) `GET search` (search.js): `q` required (400 when empty), max 256
+  chars; live case-insensitive substring scan per item (no index lag); default scanned fields
+  `title,slug,description,tags,content`; results `{id, title, slug, location, score, snippet,
+  matches, links}` sorted `-score`; anonymous callers see published items only. **The `fields`
+  CSV both narrows the scanned fields AND projects the output records down to those keys
+  (`projectCollection`) — with `fields` set, results carry ONLY the requested keys.**
+- (Phase 3, source) `GET tags` (tags.js): `{count, total, page, tags: [{tag, count, items: []}]}`
+  sorted `-count`; `items` populated only with `include=items`; pagination default 100, max 1000.
+- (Phase 3, source + live) `{idOrSlug}` route params are single-segment Express params that the
+  server `decodeURIComponent`s (findItemByIdOrSlug) — nested slugs (`unit-1/lesson-1`) must
+  travel percent-encoded (`quote(..., safe="")`).
+- (Phase 3, live) `GET content/{idOrSlug}?format=html` returns the JSON envelope HTML-wrapped in
+  `<pre>` (not the raw body) — read with `format=json`; `data.body` never contains the
+  `<page-break>` (stripped on save). The §5.2 Page Break rule is confirmed live: saves WITH the
+  minimal `<page-break item-id title slug published="published">` prefix write and commit; per
+  saveNode.js source a body WITHOUT it writes nothing and still returns 200.
 
 ## Environment notes
 
@@ -128,6 +183,9 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
   (4 tests, two boots) ≈ 38s cached / ~77s including the first install.
 - Phase 1 timings: live `integration or functional` (14 tests, incl. two site
   create/archive cycles) ≈ 13s warm; full `uv run pytest -m "not e2e"` (92 tests) ≈ 17s.
+- Phase 3 timings: unit + regression (210 tests) ≈ 17s; live `integration or functional`
+  (26 tests, ~10 site create/archive cycles) ≈ 51s warm; full `uv run pytest -m "not e2e"`
+  (236 tests) ≈ 70s warm.
 - Node version used: v22.23.3 (npm 10.9.9); system Python 3.13.6, project pinned 3.12
   (`.python-version`), uv 0.8.4.
 - fastmcp version pinned: `==4.0.10` (pyproject), mcp SDK v2 types via `fastmcp.mcp_types`.
@@ -137,6 +195,9 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
   (PS 5.1 adds a BOM that ends up inside the commit subject; amend with `git commit --amend -F` if
   it happens).
 - Bash tool is rejected by the user in this workspace; use PowerShell for all shell work.
+- Python `subprocess.run(..., text=True)` decodes child output with the locale codepage
+  (cp1252 here) unless `encoding="utf-8"` is passed — UTF-8 pytest output comes back as
+  phantom mojibake. The harness always passes `encoding="utf-8"`.
 - pytest-asyncio: with `asyncio_default_fixture_loop_scope = "session"`, async TESTS must also run
   on the session loop (`asyncio_default_test_loop_scope = "session"` in pyproject). A
   function-loop test awaiting a session-loop-bound fixture (the fastmcp in-memory `Client` task
@@ -464,3 +525,82 @@ lists; site-level reads anonymous; skeleton create → 5 course pages, skeleton 
   per session makes that safe). Phase 3 should finally add the `site` fixture.
 - Live-instance counts to remember: 16 themes, 8 bundled skeletons (no `default-starter`),
   version self-reports 26.8.0.
+
+---
+
+### Phase 3: Outline and page tools
+
+**Session:** shared with Phases 0-2 (compacted several times)
+**Completed:** 2026-09-30, tag `phase-03`
+
+**Built**
+- `models/item.py` (`Item`, `ItemCollection`), `models/revision.py` (`Revision`,
+  `RevisionDetail`) — snake_case models with `from_api` constructors.
+- `client/site_api.py` Phase 3 helpers: `list_items`, `get_item`, `create_item`,
+  `update_item` (single-operation PATCH), `delete_item`, `save_outline`, `list_revisions`,
+  `get_revision`, `restore_revision`, `search`, `list_tags`.
+- `services/outline.py` — `fetch_all_items` (paginates GET items, max limit 200),
+  `resolve_parent_id`, `build_outline` (tree sorted by `(order, title)`), pure
+  `build_reorder_payload` (complete-manifest PATCH body; goldened).
+- `services/pages.py` — `find_page` (NOT_FOUND + did-you-mean hints), `list_pages`,
+  `create_page` (computes append order; setSlug/setPublished follow-ups), `create_pages`
+  (bulk, client-side ids/slugs, re-lists the manifest), pure `build_detail_operations`
+  (setSlug LAST; goldened), `update_page_details`, `delete_page`, revisions
+  (list/get/restore with hex-hash validation), `search_site`, `list_tags`.
+- `tools/outline.py` (5 tools: get_outline, reorder_pages, move_page, set_page_parent,
+  indent/outdent via move_page) and `tools/pages.py` (11 tools: list_pages, get_page,
+  create_page, create_pages, update_page_details, delete_page, list_page_revisions,
+  get_page_revision, restore_page_revision, search_site, list_tags) → `server.py` now
+  registers 29 tools.
+- `tests/conftest.py` gained the PLAN §6.2 fixtures: `site` (function-scoped throwaway
+  `mcp-t-<8 hex>` clean-one site, archived on teardown) and `page` (fresh "Test Page" Item
+  in `site`).
+
+**Tests added**
+- unit: `test_p03_outline_tree.py` (14), `test_p03_reorder_payload.py` (15),
+  `test_p03_pages_service.py` (24, respx) — 53 new; `test_p00_server_boot.py` updated for
+  the 29-tool registry + Phase 3 annotation matrix.
+- integration: `test_p03_pages.py`, `test_p03_outline.py`, `test_p03_revisions.py`,
+  `test_p03_search_tags.py` (4 files, 4 tests — full lifecycle each).
+- regression: new goldens `reorder_payload.json`, `detail_operations.json`;
+  `tool_schemas.json` regenerated for 29 tools.
+- functional: `test_p03_add_and_rename_page.py`, `test_p03_structure_course.py` (2 files,
+  2 tests — the Appendix D tutorial stories).
+- full rerun: `uv run pytest -m "not e2e"` → 236 passed in 69.53s (210 unit/regression;
+  26 live).
+
+**Verified facts** — see the cumulative list (all Phase 3 bullets): itemFromParams
+order-0/metadata-wholesale/slug-ignore behaviour; addPage bulk defaults; saveOutline
+complete-manifest rule; setSlug → overridePathauto; setParent order 0; move/indent/outdent
+semantics; GET items filter quirks; pageType vocabulary; revision hash rules; search
+fields-projection quirk; tags shape; percent-encoded nested slugs; format=html `<pre>`
+envelope + Page Break rule confirmed live.
+
+**Deviations from PLAN.md**
+- One EXTRA commit beyond PLAN's list: `30750b3 fix(pages): create_page appends after
+  siblings` — the live suites caught that omitting `order` on single creates leaves the
+  prototype default 0 (all pages tie → outline goes alphabetical); `create_page` now
+  fetches the manifest and computes max-sibling-order + 1. Cost: one extra GET per single
+  create (bulk path unaffected).
+- `create_page`'s setPublished follow-up only fires for `published=False` (the POST body
+  already carries `metadata.published`; skipping it for the default `True` avoids a
+  redundant git commit per page).
+- The revisions integration test reads content with `format=json` — `format=html` returns
+  the JSON envelope `<pre>`-wrapped (live discovery).
+
+**Known gaps / follow-ups**
+- `create_pages` (bulk) does not fill `indent` for nested entries — upstream `addPage`
+  leaves it undefined when `parent` is a string id, so the manifest omits the key. Tree
+  building uses parent links, so tools are unaffected; Phase 4's page-break serializer
+  writes `depth="<indent>"` — revisit there if indent fidelity matters.
+- `move_page` covers moveUp/moveDown/indent/outdent; a direct "move to arbitrary position"
+  is `reorder_pages`/`set_page_parent` territory (documented in the tool docstrings).
+
+**Notes for the next Session**
+- Phase 4 content saves should reuse the raw `PATCH content` pattern from
+  `tests/integration/test_p03_revisions.py` (minimal `<page-break item-id title slug
+  published="published">` prefix; API-REF §5.2) until the page-break builder lands.
+- The `site`/`page` conftest fixtures exist now — Phase 4+ integration tests get a clean
+  site per test for free (each costs one create/archive cycle ≈ 4s).
+- Search results with `fields` set are PROJECTED (only the requested keys come back) —
+  tool docstrings must not promise full records when `fields` is passed.
