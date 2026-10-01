@@ -1,17 +1,40 @@
-"""Typed Site API endpoint helpers (PLAN Phase 2 T2.2).
+"""Typed Site API endpoint helpers (PLAN Phase 2 T2.2, Phase 3 T3.2).
 
-The three routes below are PUBLIC reads: `specs/site-spec.yaml` sets `security: []` globally
-(line 47) and the Phase 2 probe confirmed anonymous 200s for `GET site`, `GET themes`, and
-`GET themes/active` — so they use `auth="none"` and never touch the auth manager. Phase 3+ adds
-the item/content helpers (which DO require bearer + site token).
+Auth per `specs/site-spec.yaml` `security:` blocks (source of truth — API-REF §2.6 was wrong
+once already):
+
+* PUBLIC reads (`security: []` global, line 47): `GET site`, `GET themes`, `GET themes/active`,
+  `GET items`, `GET items/{idOrSlug}`, `GET search`, `GET tags` — confirmed anonymous 200s in
+  the Phase 2 probe. The item/search/tags reads are sent with `auth="bearer"` anyway: the
+  routes upgrade visibility for authenticated callers (unpublished items; verified in
+  siteRouteUtils.filterItemsForAnonymousAccess).
+* bearer + SITE token: `POST items`, `PATCH items/{idOrSlug}`, `DELETE items/{idOrSlug}`,
+  `PATCH site/outline`, `POST site/normalize-slugs`, and all three revision routes.
+
+Live facts these helpers encode (Phase 3 source reads, recorded in PROGRESS.md):
+
+* `GET items` paginates: default `page.limit` 25, max 200 — callers must paginate.
+* `{idOrSlug}` routes are single-segment Express params and the server `decodeURIComponent`s
+  them, so nested slugs (which contain `/`) travel percent-encoded (`quote(..., safe="")`).
+* `PATCH items/{idOrSlug}` takes `{site:{name}, operation, ...fields}`, ONE operation per
+  request; the response `data` is the updated item (summary shape).
+* `POST items` single form: `{site:{name}, node:{id,title,location,duplicate,contents},
+  parent, order, indent, description, metadata}`; bulk form: `{site:{name}, items:[...]}`
+  (response `data` is the LAST created item — createNode.js).
+* revisions `{revisionId}` must be a 7-64 hex git hash; restore needs no body.
+* `POST site/normalize-slugs` accepts `preview: true` in the body (no writes, returns the
+  planned changes); response `data = {changed, preview, changes, skipped}`.
 """
 
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 
 from haxcms_mcp.client import HaxcmsClient
 from haxcms_mcp.client.envelope import unwrap_dict
+
+# --- Phase 2: public site-level reads -------------------------------------------------
 
 
 async def site_summary(client: HaxcmsClient, site: str) -> dict[str, Any]:
@@ -29,4 +52,172 @@ async def list_site_themes(client: HaxcmsClient, site: str) -> dict[str, Any]:
 async def active_theme(client: HaxcmsClient, site: str) -> dict[str, Any]:
     """GET themes/active -> the site's active theme record (public)."""
     response = await client.request("GET", client.site_path(site, "themes/active"), auth="none")
+    return unwrap_dict(response)
+
+
+# --- Phase 3: items / outline ----------------------------------------------------------
+
+
+def _item_path(client: HaxcmsClient, site: str, id_or_slug: str, suffix: str = "") -> str:
+    """`items/{quoted}` (+suffix) — slugs may contain `/`, so percent-encode the segment."""
+    segment = quote(id_or_slug, safe="")
+    tail = f"/{suffix.lstrip('/')}" if suffix else ""
+    return client.site_path(site, f"items/{segment}{tail}")
+
+
+async def list_items(
+    client: HaxcmsClient, site: str, *, params: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """GET items -> ItemCollection `{count, total, page, items}`.
+
+    `params` carries the raw query keys (`filter.parent`, `page.limit`, `include`, ...).
+    Bearer-authenticated: unpublished items are included.
+    """
+    response = await client.request(
+        "GET", client.site_path(site, "items"), params=params, auth="bearer"
+    )
+    return unwrap_dict(response)
+
+
+async def get_item(
+    client: HaxcmsClient, site: str, id_or_slug: str, *, include_content: bool = False
+) -> dict[str, Any]:
+    """GET items/{idOrSlug} -> one item record (404 -> NOT_FOUND; bearer sees unpublished)."""
+    params = {"include": "content"} if include_content else None
+    response = await client.request(
+        "GET", _item_path(client, site, id_or_slug), params=params, auth="bearer"
+    )
+    return unwrap_dict(response)
+
+
+async def create_item(client: HaxcmsClient, site: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """POST items (single `node` form or bulk `items` form) -> the created item (bulk: the
+    LAST created item — read createNode.js; callers that need every id supply their own)."""
+    response = await client.request(
+        "POST", client.site_path(site, "items"), json=payload, auth="bearer+site", site=site
+    )
+    return unwrap_dict(response)
+
+
+async def update_item(
+    client: HaxcmsClient, site: str, id_or_slug: str, operation: str, **fields: Any
+) -> dict[str, Any]:
+    """PATCH items/{idOrSlug} with ONE nodeDetailOperation -> the updated item record."""
+    body: dict[str, Any] = {"site": {"name": site}, "operation": operation, **fields}
+    response = await client.request(
+        "PATCH", _item_path(client, site, id_or_slug), json=body, auth="bearer+site", site=site
+    )
+    return unwrap_dict(response)
+
+
+async def delete_item(client: HaxcmsClient, site: str, id_or_slug: str) -> dict[str, Any]:
+    """DELETE items/{idOrSlug} -> the deleted item record (children re-parent to the root)."""
+    response = await client.request(
+        "DELETE",
+        _item_path(client, site, id_or_slug),
+        json={"site": {"name": site}},
+        auth="bearer+site",
+        site=site,
+    )
+    return unwrap_dict(response)
+
+
+async def save_outline(
+    client: HaxcmsClient, site: str, items: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """PATCH site/outline -> `{items: [...]}` (the FULL manifest after the save).
+
+    Items omitted from `items` are NOT deleted (saveOutline.js: only an explicit
+    `delete: true` entry removes a page) but they also keep their old order — send the
+    complete list. Unknown ids are created with server-assigned ids.
+    """
+    response = await client.request(
+        "PATCH",
+        client.site_path(site, "site/outline"),
+        json={"site": {"name": site}, "items": items},
+        auth="bearer+site",
+        site=site,
+    )
+    return unwrap_dict(response)
+
+
+async def normalize_slugs(
+    client: HaxcmsClient, site: str, *, preview: bool = False
+) -> dict[str, Any]:
+    """POST site/normalize-slugs -> `{changed, preview, changes, skipped}`.
+
+    Regenerates every slug from its title per Pathauto; items with
+    `metadata.overridePathauto` land in `skipped`. `preview=True` plans without writing.
+    """
+    response = await client.request(
+        "POST",
+        client.site_path(site, "site/normalize-slugs"),
+        json={"site": {"name": site}, "preview": preview},
+        auth="bearer+site",
+        site=site,
+    )
+    return unwrap_dict(response)
+
+
+# --- Phase 3: revisions -----------------------------------------------------------------
+
+
+async def list_revisions(
+    client: HaxcmsClient, site: str, id_or_slug: str, *, limit: int = 25, offset: int = 0
+) -> dict[str, Any]:
+    """GET items/{idOrSlug}/revisions -> `{nodeId, ..., count, total, revisions: [...]}`."""
+    response = await client.request(
+        "GET",
+        _item_path(client, site, id_or_slug, "revisions"),
+        params={"page.limit": limit, "page.offset": offset},
+        auth="bearer+site",
+        site=site,
+    )
+    return unwrap_dict(response)
+
+
+async def get_revision(
+    client: HaxcmsClient, site: str, id_or_slug: str, revision_id: str
+) -> dict[str, Any]:
+    """GET items/{idOrSlug}/revisions/{hash} -> `{nodeId, ..., revision, content}`."""
+    response = await client.request(
+        "GET",
+        _item_path(client, site, id_or_slug, f"revisions/{quote(revision_id, safe='')}"),
+        auth="bearer+site",
+        site=site,
+    )
+    return unwrap_dict(response)
+
+
+async def restore_revision(
+    client: HaxcmsClient, site: str, id_or_slug: str, revision_id: str
+) -> dict[str, Any]:
+    """POST items/{idOrSlug}/revisions/{hash}/restore -> `{nodeId, restoredFromHash, ...}`."""
+    response = await client.request(
+        "POST",
+        _item_path(client, site, id_or_slug, f"revisions/{quote(revision_id, safe='')}/restore"),
+        json={"site": {"name": site}},
+        auth="bearer+site",
+        site=site,
+    )
+    return unwrap_dict(response)
+
+
+# --- Phase 3: search and tags --------------------------------------------------------------
+
+
+async def search(
+    client: HaxcmsClient, site: str, q: str, *, params: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """GET search?q=... -> `{count, total, page, results: [...]}` (400 when q is empty)."""
+    query: dict[str, Any] = {"q": q, **(params or {})}
+    response = await client.request(
+        "GET", client.site_path(site, "search"), params=query, auth="bearer"
+    )
+    return unwrap_dict(response)
+
+
+async def list_tags(client: HaxcmsClient, site: str) -> dict[str, Any]:
+    """GET tags -> `{count, total, page, tags: [{tag, count}]}` sorted by -count."""
+    response = await client.request("GET", client.site_path(site, "tags"), auth="bearer")
     return unwrap_dict(response)
