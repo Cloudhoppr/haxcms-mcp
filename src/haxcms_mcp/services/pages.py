@@ -9,7 +9,10 @@ PROGRESS.md):
   (which also sets `metadata.overridePathauto`, so the slug then sticks across later
   `setTitle` calls). `published=False` additionally gets a `setPublished` follow-up per
   PLAN T3.4 (belt and braces; skipped for the default `True` to avoid a redundant git
-  commit per page).
+  commit per page). Omitting `order` leaves it at the prototype default 0 — every such
+  creation ties and the outline falls back to title order (verified live) — so
+  `create_page` computes the append position among the future siblings itself; the bulk
+  path (`addPage`) defaults `order` to `manifest.items.length` and needs no help.
 * Bulk `POST items` → `addPage`: honours client-supplied ids (parents can be calculated
   ahead of time) and defaults slugs to `welcome` — `create_pages` fills missing ids and
   slugs itself. The response only carries the LAST created item, so the created pages are
@@ -137,9 +140,11 @@ async def create_page(
 ) -> Item:
     """Create one page (the tutorial's "Add > Page"); returns the created record.
 
-    `parent` accepts an id or a slug. `slug` is applied via a `setSlug` follow-up because
-    the create form ignores slugs (Pathauto slugifies the title); the follow-up also sets
-    `overridePathauto`, so the explicit slug survives later title changes.
+    `parent` accepts an id or a slug. Without `order` the page is appended after its new
+    siblings (the create form would leave every un-ordered page at order 0). `slug` is
+    applied via a `setSlug` follow-up because the create form ignores slugs (Pathauto
+    slugifies the title); the follow-up also sets `overridePathauto`, so the explicit slug
+    survives later title changes.
     """
     clean_title = (title or "").strip()
     if not clean_title:
@@ -148,9 +153,17 @@ async def create_page(
             "title must not be empty",
             hint='the tutorial "Add > Page" creates a page titled "page"',
         )
+    items = await fetch_all_items(client, site)
     parent_id: str | None = None
     if parent is not None and str(parent).strip():
-        parent_id = resolve_parent_id(await fetch_all_items(client, site), str(parent))
+        parent_id = resolve_parent_id(items, str(parent))
+    if order is None:
+        # itemFromParams keeps the prototype's order 0 when omitted — compute the append
+        # position among the future siblings so the page lands after them
+        order = (
+            max((item.order for item in items if (item.parent or None) == parent_id), default=-1)
+            + 1
+        )
     metadata: dict[str, Any] = {"published": bool(published)}
     if tags:
         metadata["tags"] = list(tags)

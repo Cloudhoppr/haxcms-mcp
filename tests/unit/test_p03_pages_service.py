@@ -267,8 +267,44 @@ async def test_create_page_sends_the_single_form() -> None:
 
 
 @respx.mock
+async def test_create_page_computes_the_append_order() -> None:
+    """itemFromParams leaves an omitted order at 0 (live-verified tie) — the service
+    computes the append position among the future siblings instead."""
+    mock_auth()
+    respx.get(ITEMS_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json=items_body(
+                [
+                    record("item-home", "Home", order=0),
+                    record("item-a", "A", order=1),
+                    record("item-child", "Child", parent="item-a", order=0),
+                ]
+            ),
+        )
+    )
+    post_route = respx.post(ITEMS_URL).mock(
+        return_value=httpx.Response(200, json={"status": 200, "data": record("item-new")})
+    )
+
+    async with HaxcmsClient(make_settings()) as client:
+        # root level: appended after Home(0) and A(1); the nested Child(0) is no sibling
+        await pages_service.create_page(client, "demo", "New")
+        sent = json.loads(post_route.calls.last.request.content)
+        assert sent["parent"] is None
+        assert sent["order"] == 2
+
+        # under a parent: appended after that parent's only child (order 0)
+        await pages_service.create_page(client, "demo", "New", parent="item-a")
+        sent = json.loads(post_route.calls.last.request.content)
+        assert sent["parent"] == "item-a"
+        assert sent["order"] == 1
+
+
+@respx.mock
 async def test_create_page_explicit_slug_uses_set_slug_followup() -> None:
     mock_auth()
+    respx.get(ITEMS_URL).mock(return_value=httpx.Response(200, json=items_body([])))
     respx.post(ITEMS_URL).mock(
         return_value=httpx.Response(
             200, json={"status": 200, "data": record("item-new", "Lesson", "lesson")}
@@ -296,6 +332,7 @@ async def test_create_page_explicit_slug_uses_set_slug_followup() -> None:
 @respx.mock
 async def test_create_page_unpublished_sends_metadata_and_set_published() -> None:
     mock_auth()
+    respx.get(ITEMS_URL).mock(return_value=httpx.Response(200, json=items_body([])))
     post_route = respx.post(ITEMS_URL).mock(
         return_value=httpx.Response(
             200, json={"status": 200, "data": record("item-new", "Draft", "draft")}
