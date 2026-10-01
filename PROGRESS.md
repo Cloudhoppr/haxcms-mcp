@@ -18,7 +18,7 @@ Read order at the start of a Session: PLAN.md §0 → CONTEXT.md → this file �
 | 5 | Files | done | `phase-05` | see tag |
 | 6 | Site settings | done | `phase-06` | see tag |
 | 7 | Imports and generated converters | done | `phase-07` | see tag |
-| 8 | Exports | not started | | |
+| 8 | Exports | done | `phase-08` | see tag |
 | 9 | Prompts, docs, hardening, e2e | not started | | |
 
 ## Verified facts (cumulative)
@@ -356,6 +356,39 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
   422 (openstax/plone converters) maps to INVALID_ARGUMENT with the upstream message. Legacy
   binary formats (.doc/.xls/.ppt) are refused LOCALLY at `detect_import_kind` — the server's
   OOXML importers enforce .docx + zip magic, so the upload would be doomed.
+- (Phase 8, T8.5, source e969655c + live probe) `GET site/export/{format}` binary-vs-descriptor
+  split: pdf/docx/epub/html → RAW binary (Content-Type + Content-Disposition attachment);
+  zip/markdown/skeleton → a DESCRIPTOR JSON `{format, supportedFormats, export{rel, mediaType,
+  href}, links}` whose `export.href` names the route that really produces the artifact. An
+  unsupported format → 400 `{message: Unsupported site export format "<f>", supportedFormats}`.
+- (Phase 8, T8.5, live) The zip two-step: `POST sites/{name}/download` → `{link:
+  "/_published/<site>.zip", name}`; `/_published/` is a STATIC, UNAUTHENTICATED mount (app.js
+  sendFile) → the bytes are fetched with auth="none". A two-page site zips to ~277KB / 75 entries
+  (whole site folder incl. site.json, boilerplate and assets; minus node_modules/.git), PK magic.
+- (Phase 8, T8.5, source) `download-skeleton` returns the skeleton INLINE `{skeleton, filename:
+  "<machineName>.json"}` — API-REF §3.4 guessed `{link, name}`. Shape: `{meta{name, machineName,
+  type: skeleton, ...}, site, build{type: skeleton, structure: from-skeleton, items[{id, title,
+  slug, order, parent, indent, content, metadata}] with CONTENT inline, files: []}, theme,
+  _skeleton}`.
+- (Phase 8, T8.5, live) `save-as-template` → `{saved: true, name: machineName, filename, path
+  (SERVER fs), link "/system/api//v1/skeletons/<name>"}` (the double-slash quirk Phase 2 already
+  noted); it writes `<config>/user/skeletons/` which skeletonsList scans → the template appears
+  in list_skeletons AND get_skeleton IMMEDIATELY.
+- (Phase 8, T8.5, live) Chrome-less conversion failures on the export routes are **502** (PLAN
+  T8.3 guessed 500) with `data.message` = `No Chrome/Chromium executable found. Install Chrome or
+  set PUPPETEER_EXECUTABLE_PATH.` — WITHOUT the converter actions' `Unable to complete ...
+  conversion:` prefix. The service re-maps any error containing "No Chrome" to UNSUPPORTED with
+  the PLAN hint. docx and epub exports need NO Chrome (live-verified); only pdf does.
+- (Phase 8, T8.5, source + live) `GET items/{idOrSlug}/export/{format}` — ALL eight formats
+  (pdf/docx/html/md/json/yaml/xml/epub) are raw binary downloads; md/html/json/yaml/xml contain
+  the page title verbatim; json/yaml/xml serialize the item summary + content string (xml root
+  `<response>`, json is JSON.stringify(..., 2)). Bearer sees unpublished items; anonymous 404s.
+- (Phase 8, live) The markdown site export's descriptor href → `GET v1/content?mode=concat&
+  format=md` (raw text/markdown, no envelope): every page renders as `# {title}` followed by its
+  content VERBATIM — raw HTML (`<p></p>`) appears inside the .md, it is not turndown-converted
+  at site level (item-level md IS turndown).
+- (Phase 8, live) Site html export = a single-file rendering whose `<title>` is the siteBase
+  (sanitized metadata.site.name → title → site.name fallback order).
 
 ## Environment notes
 
@@ -373,6 +406,9 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
   own throwaway site) dominate.
 - Phase 7 timings: unit + regression (602 tests) ≈ 76s; live integration + functional (114 tests:
   110 passed, 4 skipped) ≈ 252s; registry now 112 tools.
+- Phase 8 timings: unit + regression (641 tests) ≈ 93s; live integration + functional (123 tests:
+  119 passed, 4 skipped) ≈ 284s; the Phase 8 live suites alone (8 integration + 1 functional)
+  ≈ 32s warm; registry now 117 tools.
 - Node version used: v22.23.3 (npm 10.9.9); system Python 3.13.6, project pinned 3.12
   (`.python-version`), uv 0.8.4.
 - fastmcp version pinned: `==4.0.10` (pyproject), mcp SDK v2 types via `fastmcp.mcp_types`.
@@ -1252,3 +1288,110 @@ converters are exactly htmlToPdf + docxToPdf, skipped without it (this machine h
   HaxcmsRuntime + in-memory Client + create/try/finally archive; expect ONE fixup iteration for
   tree/sort semantics even after probing (get_outline's nested tree + root ordering surprised the
   first draft of the Phase 7 assertions).
+
+### Phase 8: Exports and publishing artifacts
+
+**Session:** shared with Phases 0-7 (compacted several times)
+**Completed:** 2026-10-01, tag `phase-08`, final commit: see tag
+
+**Built** (PLAN's 5 commits, exactly)
+- `models/export.py` + endpoint helpers (d15e81b) — `ExportArtifact{site, page_id|None, format,
+  path, bytes, mimetype, created_at}` (page_id dropped when None) + `TemplateResult.from_api`
+  (extra="ignore"); the server's exact SITE_EXPORT_FORMATS / ITEM_EXPORT_FORMATS /
+  EXPORT_MEDIA_TYPES tables copied from exports.js. `system_api`: download_site,
+  download_site_skeleton (INLINE skeleton), save_site_as_template — all bearer+user with the
+  export timeout — and fetch_published (the unauthenticated `_published` mount). `site_api`:
+  site_export (bytes|dict via the Content-Type discriminator), item_export (always raw bytes,
+  nested slugs percent-encoded through `_item_path`), site_markdown (concat mode). 15 unit
+  goldens incl. the httpx `url.raw_path` gotcha (url.path DECODES %2F).
+- `services/exports/` package (28454e6) — `output.py` is the PLAN §2.3 write rule:
+  `HAXCMS_MCP_OUTPUT_DIR/<site>/<YYYYMMDD-HHMMSS>-<name>.<ext>`, site subfolder created on
+  write, reusing `conversion.safe_filename` + `_unique_path` (never overwrite, `-<n>` slots,
+  site names sanitized as path segments too). `service.py`: export_site (local allow-list
+  validation → INVALID_ARGUMENT with the supported list BEFORE any HTTP; zip two-step with
+  `<site>.zip` name fallback; markdown = descriptor GET validates + concat fetch; skeleton
+  delegates; pdf/docx/epub/html direct bytes with a defensive descriptor-answer check),
+  export_page (get_item first for the canonical page_id + early 404; nested slugs keep their
+  last segment locally), save_site_as_template, download_site_skeleton (pretty JSON,
+  ensure_ascii=False). `_chrome_reraise` re-maps any "No Chrome" error to UNSUPPORTED with the
+  PLAN T8.3 hint — wired into BOTH site and page binary paths. The stray empty Phase 0
+  `services/exports.py` was git-rm'd (the package shadows it at import time anyway).
+- `tools/exports.py` (a63e2bb, 112 → 117 tools) — export_site (format default zip), export_page
+  (page + format default md), download_site_zip (the PLAN-mandated discoverability alias),
+  save_site_as_template, download_site_skeleton; all resolve the site through the Default Site
+  convention and return dump_model artifacts — {path, bytes, mimetype}, never bytes, never a
+  URL. Annotations per PLAN T8.4: read-only hint FALSE, non-destructive, idempotent (repeats
+  land in new filename slots; the template overwrites itself). Docstrings carry the Operator
+  caveats (Chrome for pdf; `path` lives on the MCP server host).
+- live suites (80fb7d1) — written AFTER a full live probe of every export path (probe script
+  deleted before the gates, per the env note).
+
+**Tests added**
+- unit: `test_p08_export_endpoints.py` (15 — respx goldens for every helper, auth headers/bodies,
+  400/502 mappings, model dumps, allow-list goldens), `test_p08_output_paths.py` (6 — naming,
+  sanitization, collision slots, subfolder creation, page_id), `test_p08_exports_service.py`
+  (16 — zip two-step, binary/descriptor/skeleton paths, Chrome-less re-maps, local validation,
+  nested slugs) → unit+regression total **641** (≈93s).
+- regression: `tool_schemas.json` regenerated (112 → 117, diff reviewed: purely additive, 149
+  insertions, five entries with the correct hints); NEW `export_output_path.json` golden freezes
+  the §2.3 naming + the dumped artifact shape (the PLAN's "output path golden").
+- integration (8, service level with output_dir=tmp_path): zip PK magic + site.json + 75-entry
+  folder; markdown (# Home concat) + html non-empty; page md/html/json/yaml/xml contain the
+  title and carry page_id; docx/epub are Chrome-free PK containers; site AND page pdf branch
+  (UNSUPPORTED + hint here, %PDF on a Chrome server); save-as-template → list_skeletons +
+  get_skeleton; skeleton parses with build.items[0].title == Home and inline content.
+- functional (1): `test_p08_share_course.py` — "Export my course as a zip and the lesson as PDF"
+  through Tool calls only, with a local mcp fixture whose output_dir is tmp_path.
+- full live rerun: `uv run pytest tests/integration tests/functional -q` → **119 passed, 4
+  skipped** (2 network + 2 needs_chrome, by design) in 283.73s — all earlier phases still green.
+  `ruff check` + `ruff format --check` + `mypy src` (74 files) clean.
+
+**Verified facts** — see the cumulative list above (all Phase 8 bullets). T8.5 answers:
+binary = pdf/docx/epub/html (+ ALL eight item formats); descriptor = zip/markdown/skeleton;
+zip magic PK + site.json inside; save-as-template returns {saved, name, filename, path, link}
+and stores under `<config>/user/skeletons/` → immediately in list_skeletons.
+
+**Deviations from PLAN.md**
+1. T8.3 said "a 500 on pdf" for Chrome-less instances — reality (source + live) is **502**
+   `{data.message}`. The envelope's ≥500 → UPSTREAM_ERROR mapping stands; the service re-maps
+   the "No Chrome" substring to UNSUPPORTED with the PLAN's exact hint. The live message has no
+   "Unable to complete PDF export conversion:" prefix (that is the CONVERTER actions' wording) —
+   both unit goldens were corrected to the live wording in commit 4.
+2. API-REF §3.4's `{link, name}` guess for download-skeleton is wrong — the skeleton arrives
+   INLINE as `{skeleton, filename}` (source-verified in commit 1; matches the Phase 2 probe note).
+3. T8.3's "others → GET site/export/{format}" is only literally true for pdf/docx/epub/html:
+   the GET for zip/markdown/skeleton answers a DESCRIPTOR, so the service special-cases zip
+   (the PLAN's own two-step), markdown (descriptor validation + concat fetch) and skeleton
+   (direct POST). The descriptor GET is still issued for markdown so the server validates the
+   route/format before the content fetch.
+4. The functional journey's PDF leg: the PLAN scenario assumes a Chrome-equipped server; this
+   machine has none, so the test asserts the `[UNSUPPORTED]` no-Chrome contract and falls back
+   to docx — the operator still leaves with two files (.zip + .docx) with correct extensions in
+   the Output Directory. On a Chrome server the same test takes the .pdf branch (branched, not
+   skipped — it never depends on the environment to pass).
+5. T8.3 named `services/exports.py`; the Phase 0 scaffold had BOTH that empty file and an empty
+   `services/exports/` package (which shadows the module at import time). The stray module was
+   deleted and the package implemented per the files/ precedent (docstring __init__, output.py,
+   service.py) — §2.3 itself specifies `services/exports/output.py`.
+
+**Known gaps / follow-ups**
+- The CI stale-dist gap (Phase 5) stands: Phase 8 was developed against the e969655c sibling
+  checkout; the export routes on the npm-published dist are UNTESTED — Phase 9 hardening item.
+- The Chrome-server branches (site/page pdf → %PDF, the functional .pdf leg) have never executed
+  here; the UNSUPPORTED branches have. docx/epub assertions DID run live (Chrome-free).
+- save-as-template leaves the template in the session's `_config` (fresh per runtime spawn);
+  no test asserts an exhaustive skeletons list (membership only), so residue is harmless.
+
+**Notes for the next Session**
+- Phase 9 (prompts, docs, hardening, e2e, release 0.1.0): the stdio subprocess e2e helper is
+  promised in `tests/harness/mcp_client.py`'s docstring ("lands in Phase 9"); the CI stale-dist
+  follow-up and the never-executed needs_chrome/network tests are listed above.
+- Export service signatures: `export_site/export_page/download_site_skeleton` take
+  `(client, settings, site, ...)`; `save_site_as_template` takes only `(client, site)` — it
+  writes nothing locally, so it needs no settings.
+- ReadOnlyMiddleware blocks ALL five export tools in Read-Only Mode (read_only_hint False per
+  PLAN T8.4 — they create server-side artifacts): intentional, matches the PLAN's annotation
+  matrix; only true reads stay available there.
+- The `mcp` fixture's Settings use the DEFAULT output_dir (`haxcms-mcp-output`, relative) —
+  any test that writes artifacts must build its own server with output_dir=tmp_path (the
+  `_output_settings` / `mcp_out` patterns in the Phase 7/8 suites).
