@@ -19,7 +19,7 @@ Read order at the start of a Session: PLAN.md §0 → CONTEXT.md → this file �
 | 6 | Site settings | done | `phase-06` | see tag |
 | 7 | Imports and generated converters | done | `phase-07` | see tag |
 | 8 | Exports | done | `phase-08` | see tag |
-| 9 | Prompts, docs, hardening, e2e | not started | | |
+| 9 | Prompts, docs, hardening, e2e | done | `phase-09` + `v0.1.0` | see tag |
 
 ## Verified facts (cumulative)
 
@@ -389,6 +389,29 @@ Phase that verified it and how (file:line in haxcms-nodejs, or a live-instance o
   at site level (item-level md IS turndown).
 - (Phase 8, live) Site html export = a single-file rendering whose `<title>` is the siteBase
   (sanitized metadata.site.name → title → site.name fallback order).
+- (Phase 9, live) fastmcp Prompts API surface for tests: `client.get_prompt(name, args)` →
+  `result.messages[0].content.text`; `list_prompts()` items carry `.name` and `.arguments` with
+  `.required` (False for defaulted params).
+- (Phase 9, source) The in-memory transport enters the server lifespan PER CONNECTION (fastmcp
+  `memory.py::_enter_server_lifespan`), so a lifespan that closes the httpx client is safe under
+  the fresh-server + single-connection test pattern; over stdio the lifespan shutdown runs at EOF.
+- (Phase 9, live) ReadOnlyMiddleware fires BEFORE argument validation: all 84 non-read-only tools
+  (derived from the LIVE registry annotations — 117 tools, 33 read-only) called with EMPTY
+  arguments answer `[READ_ONLY] <tool>` with no validation error and no HTTP.
+- (Phase 9, live) `StdioTransport` passes `env` wholesale to `StdioServerParameters` — on Windows
+  the spawned server needs the FULL `os.environ` (`SystemRoot`); `server_env()` copies os.environ
+  and layers the `HAXCMS_MCP_*` settings over it.
+- (Phase 9, live) The full Appendix D replay works end-to-end over both real transports: the stdio
+  subprocess completes site → page → uploads → media → links → zip export in ~18s, and the HTTP
+  variant answers whoami/list_sites; the zip the subprocess wrote has PK magic and holds site.json
+  under the test's OUTPUT_DIR.
+- (Phase 9, measured) Unit-only coverage is 87.0% (609 tests at measurement); CI gates at 80% on
+  the lint-unit job so the gate runs on both matrix legs.
+- (Phase 9) PLAN §5's DEBUG request line (`METHOD path status ms`) was promised by the logging
+  docstring since Phase 0 but unimplemented until the Phase 9 hardening pass — it lives in
+  `HaxcmsClient._send`, logs `url.raw_path` (%2F logs as sent) and never headers; a respx-mocked
+  login/echo/logout cycle at DEBUG proves password, JWT, access token and refresh cookie never
+  reach a log record.
 
 ## Environment notes
 
@@ -1395,3 +1418,120 @@ and stores under `<config>/user/skeletons/` → immediately in list_skeletons.
 - The `mcp` fixture's Settings use the DEFAULT output_dir (`haxcms-mcp-output`, relative) —
   any test that writes artifacts must build its own server with output_dir=tmp_path (the
   `_output_settings` / `mcp_out` patterns in the Phase 7/8 suites).
+
+---
+
+### Phase 9: Prompts, documentation, hardening, final end-to-end smoke
+
+**Session:** shared with Phases 0-8 (compacted several times)
+**Completed:** 2026-10-01, tags `phase-09` + `v0.1.0`, final commit: see tag
+
+**Built** (the PLAN's 7 commits, exactly)
+- `prompts/journeys.py` (428ed87) — the four Prompts: `hax_author` (persona, the save discipline
+  — no autosave, one call is one save and one git revision — block discovery via list_blocks /
+  get_block_schema / the catalog resources, anchor + occurrence rules, alt/caption/citation
+  duties, the reserved `x/` route), `build_page_from_brief(site, page_title, brief, media)`,
+  `scaffold_course_from_outline(site_name, outline_text, theme)`,
+  `import_and_polish_document(site_name, source)`. All sync `@mcp.prompt`; every snake_case token
+  in the rendered texts is cross-checked against the LIVE tool registry (no whitelist) — the check
+  caught its one offender during development (deviation 1).
+- `scripts/gen_tool_docs.py` + `docs/tools.md` (c3c461e) — renders all 117 tools (annotations
+  line, parameter tables with type/required/default from the input schema, first docstring
+  paragraph) into a deterministic 1758-line reference; `--check` mode with unified diff wired
+  into CI next to the converters drift check; in-process twin test regenerates and compares.
+- `README.md` (261372d) — full rewrite: intro (ADR-0001 typed HTTP client of a running
+  instance), what the agent gets (117 tools / 6 resources / 4 prompts), install (`uv tool
+  install` from clone or git, `uvx`), the complete PLAN §4 configuration table, run modes
+  (stdio / http / `--version`), Claude Code `claude mcp add` (env flags + the http transport
+  variant), Claude Desktop JSON, security notes, troubleshooting table, development commands,
+  documentation links. Every claim verified against code before committing (two overstatements
+  found and fixed — deviation 4).
+- hardening (ede675f) — `build_server` owns a FastMCP lifespan that closes the httpx client on
+  session end (stdio EOF, HTTP shutdown, in-memory disconnect); PLAN §5 DEBUG request line
+  implemented in `HaxcmsClient._send` (`url.raw_path`, never headers); timeout wiring pinned
+  (client-level `timeout_s` on every call, the seven long call sites pass `export_timeout_s`,
+  the `timeout=None` kwargs guard can never DISABLE httpx timeouts); log redaction test;
+  `--version` unit test; `tests/harness/mcp_process.py` (`stdio_client()` with keep_alive=False
+  + `HttpMcpProcess` with TCP readiness and taskkill/killpg teardown — the pattern the
+  mcp_client.py docstring promised since Phase 0); whole-registry read-only matrix; HTTP
+  transport integration tests; CI coverage gate `--cov-fail-under=80`.
+- `tests/e2e/test_tutorial_smoke.py` (08c67a2) — Appendix D replayed step by step over the real
+  stdio subprocess (14 steps: whoami → "First" spaces rejection → create_site → outline →
+  create/rename page with Pathauto slug → seven paragraphs → heading → paragraph→h2 conversion
+  → two REAL image uploads via add_image_from_file → video → two add_link wraps → golden
+  block-for-block comparison + resource + disk + zip export), plus the short HTTP variant T9.5
+  asks for (whoami + list_sites).
+- `CHANGELOG.md` (15b5e6f) — hand-written from `git log` (the option T9.6 allows; git-cliff is
+  not a project dependency): Keep a Changelog format, one 0.1.0 section grouped by Conventional
+  Commit type; every tool name, count and figure verified against docs/tools.md, the registry
+  and config.py; the five pre-release fix commits cited by hash. Version 0.1.0 was already set
+  in pyproject.toml + `__init__.py` since Phase 0 — verified, unchanged.
+
+**Tests added**
+- unit: `test_p09_prompts.py` (8 — registration, argument metadata, the registry cross-check,
+  per-prompt content and ordering assertions), `test_p09_docs_current.py` (6 — committed docs
+  current, deterministic, complete, annotated; first_paragraph/schema_type extraction cases),
+  `test_p09_hardening.py` (5 — --version, lifespan close, timeout wiring, timeout=None guard,
+  redaction) → unit total **610** (95s).
+- integration: `test_p09_read_only_matrix.py` (86 — partition completeness + 84 parametrised
+  empty-args refusals derived from live annotations + read-only pass-through),
+  `test_p09_http_transport.py` (3 — registry/prompts list, read calls, create+outline+archive
+  write round trip over the spawned HTTP subprocess).
+- regression: `test_p09_snapshots.py` + NEW golden `snapshots/prompt_texts.json` (all four
+  prompts rendered with sample args). `tool_schemas.json` UNCHANGED — Phase 9 adds no tools
+  (verified: post-run `git status` clean, gen_tools --check green).
+- e2e: `test_tutorial_smoke.py` (2).
+- full exit rerun: `uv run pytest -m unit -q` → **610 passed** (95s);
+  `uv run pytest -m "not unit and not e2e" -q` → **259 passed, 4 skipped** (2 network +
+  2 needs_chrome, by design; 296s); `uv run pytest -m e2e -q` → **2 passed** (33s) — all
+  earlier phases still green; 875 tests collected; `ruff check` + `ruff format --check` +
+  `mypy src` (74 files) clean; both drift checks green; tree clean after the runs.
+
+**Verified facts** — copied into the cumulative list above (all seven Phase 9 bullets).
+
+**Deviations from PLAN.md**
+1. The no-whitelist registry cross-check flagged `new_tab` — an add_link ARGUMENT mentioned in
+   backticks in build_page_from_brief matched the tool-name regex. Reworded the prompt to "the
+   new-tab flag" (journeys.py); the check worked exactly as designed.
+2. PLAN §5's DEBUG request line was promised by logging.py's docstring since Phase 0 but never
+   implemented — reality contradicted the plan for eight phases; implemented in the hardening
+   commit (`_send`, raw_path, no headers) and pinned by the redaction test.
+3. T9.4's `--version` flag and whoami budget stats ALREADY existed (Phase 0 / Phase 1) —
+   verified, and newly pinned by unit tests instead of re-implemented.
+4. Two README claims corrected against code before committing: there is no redaction FILTER
+   (protection = nothing ever logs secrets; the redaction test pins it), and the machine-name
+   hint restates the rules rather than naming the offending character.
+5. The e2e replay rides three recorded allowances: anchors follow the `tutorial_finished.html`
+   golden, not Appendix D's paragraph ordinals (the Phase 4 deviation note — the fixture is the
+   authoritative finished page); the paste uses `set_page_content` (Appendix D step 5 explicitly
+   allows it); the site name carries a random suffix so a leaked site from a failed run can
+   never become a `<name>-1` collision. The literal tutorial name "First" is still exercised —
+   as the spaces-hint rejection.
+6. CHANGELOG hand-written from git log (T9.6 allows git-cliff OR hand-written); the v0.1.0 tag
+   is created at the §0.5 exit gate together with phase-09, on the final phase commit.
+7. The 80% coverage gate sits on the lint-unit job (runs on both matrix legs) — measured 87.0%
+   for the unit-only run.
+
+**Known gaps / follow-ups**
+- The stale-dist gap (Phase 5 note, carried through Phase 8) stands and was NOT a T9.4 item:
+  the test runtime is the sibling checkout with npm-installed dependencies (user-approved);
+  the npm-published dist's export routes remain untested.
+- The Chrome-server branches (pdf → %PDF on site and page exports) have never executed on this
+  machine; the UNSUPPORTED branches have (Phase 8 + troubleshooting docs).
+- The e2e HTTP variant is deliberately short (T9.5: whoami + list_sites); the HTTP write round
+  trip lives in the integration suite.
+
+**Notes for the next Session**
+- **The PLAN is complete.** All ten phases done; tags phase-00 … phase-09 and v0.1.0; the repo
+  ships 0.1.0: 117 tools, 6 resources, 4 prompts, stdio + streamable-HTTP.
+- Maintenance pointers: `docs/tools.md` and `generated/converters.py` are CI drift-checked —
+  regenerate with `uv run python scripts/gen_tool_docs.py` / `scripts/gen_tools.py` after any
+  tool or spec change; the regression goldens (`tool_schemas.json`, `prompt_texts.json`, …)
+  follow the `assert_or_update_snapshot(..., update=...)` flag pattern.
+- Full local battery = three commands (`-m unit`, `-m "not unit and not e2e"`, `-m e2e`), each
+  spawning its own HAXcms runtime — ~9 min total on this machine; running them separately keeps
+  memory pressure low (the environment reaper kills heavy background shells).
+- The read-only matrix derives its write set from the LIVE registry annotations — any new tool
+  is automatically included; keep the annotations honest or the matrix lies.
+- `server_env()` must always keep the full os.environ (Windows SystemRoot); `stdio_client`
+  uses keep_alive=False so subprocesses die with their connection.
